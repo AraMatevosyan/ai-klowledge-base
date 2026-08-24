@@ -1,0 +1,98 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum DocumentStatus {
+  UPLOADING
+  PROCESSING
+  READY
+  FAILED
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  documents Document[]
+  messages  Message[]
+
+  @@map("users")
+}
+
+model Document {
+  id           String         @id @default(uuid())
+  userId       String         @map("user_id")
+  name         String
+  mimeType     String         @map("mime_type")
+  size         Int
+  storageKey   String         @unique @map("storage_key")
+  status       DocumentStatus @default(UPLOADING)
+  pageCount    Int?           @map("page_count")
+  chunkCount   Int            @default(0) @map("chunk_count")
+  errorMessage String?        @map("error_message")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+
+  user   User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pages  DocumentPage[]
+  chunks DocumentChunk[]
+
+  @@index([userId, createdAt])
+  @@map("documents")
+}
+
+model DocumentPage {
+  id         String   @id @default(uuid())
+  documentId String   @map("document_id")
+  pageNumber Int      @map("page_number")
+  text       String   @db.Text
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, pageNumber])
+  @@map("document_pages")
+}
+
+model DocumentChunk {
+  id         String                       @id @default(uuid())
+  documentId String                       @map("document_id")
+  pageNumber Int                          @map("page_number")
+  chunkIndex Int                          @map("chunk_index")
+  content    String                       @db.Text
+  createdAt  DateTime                     @default(now()) @map("created_at")
+  embedding  Unsupported("vector(1536)")?
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, chunkIndex])
+  @@index([documentId, pageNumber])
+  @@map("document_chunks")
+}
+
+model Message {
+  id        String      @id @default(uuid()) @db.Uuid
+  userId    String
+  role      MessageRole
+  content   String      @db.Text
+  sources   Json?
+  createdAt DateTime    @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}

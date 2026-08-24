@@ -1,0 +1,16 @@
+node_modules/
+dist/
+coverage/
+
+.env
+.env.*
+
+storage/
+src/generated/prisma/
+
+*.log
+
+.git/
+.gitignore
+
+README.md
