@@ -1,5 +1,25 @@
-import { Injectable } from '@nestjs/common';
-import { OpenAiClientService } from '../ai/openai-client.service';
+import {
+    BadGatewayException,
+    Injectable,
+    Logger,
+} from '@nestjs/common';
+import { OpenAiClientService } from './openai-client.service';
+import { AiBudgetService } from './ai-budget.service';
+import type {
+    AiBudgetReservation,
+    AiTokenUsage,
+} from './ai-budget.types';
+
+const MAX_CHAT_OUTPUT_TOKENS = 1_000;
+
+type OpenAiResponseUsage = {
+    input_tokens: number;
+    output_tokens: number;
+
+    input_tokens_details?: {
+        cached_tokens?: number;
+    } | null;
+};
 
 export type AnswerContextChunk = {
     documentId: string;
@@ -10,40 +30,243 @@ export type AnswerContextChunk = {
 
 @Injectable()
 export class AnswerGenerationService {
-    constructor(private readonly openAiClientService: OpenAiClientService) {}
+    private readonly logger =
+        new Logger(
+            AnswerGenerationService.name,
+        );
+
+    constructor(
+        private readonly openAiClientService:
+        OpenAiClientService,
+
+        private readonly aiBudgetService:
+        AiBudgetService,
+    ) {}
 
     async generateAnswer(
+        userId: string,
         question: string,
         chunks: AnswerContextChunk[],
     ): Promise<string> {
-        const client = this.openAiClientService.getClient();
+        const client =
+            this.openAiClientService.getClient();
 
-        const response = await client.responses.create({
-            model: process.env.OPENAI_CHAT_MODEL ?? 'gpt-4.1-mini',
-            instructions: this.getInstructions(),
-            input: this.buildInput(question, chunks),
-        });
+        const instructions =
+            this.getInstructions();
 
-        return response.output_text.trim();
+        const input =
+            this.buildInput(
+                question,
+                chunks,
+            );
+
+        const reservation =
+            await this.aiBudgetService.reserveForChat(
+                userId,
+                instructions,
+                input,
+                MAX_CHAT_OUTPUT_TOKENS,
+            );
+
+        let reservationHandled = false;
+
+        try {
+            const response =
+                await client.responses.create({
+                    model:
+                        process.env
+                            .OPENAI_CHAT_MODEL ??
+                        'gpt-4.1-mini',
+
+                    instructions,
+                    input,
+
+                    max_output_tokens:
+                    MAX_CHAT_OUTPUT_TOKENS,
+                });
+
+            if (!response.usage) {
+                throw new BadGatewayException(
+                    'The AI response did not include token usage.',
+                );
+            }
+
+            reservationHandled = true;
+
+            await this.aiBudgetService.settle(
+                reservation,
+                this.toChatTokenUsage(
+                    response.usage,
+                ),
+            );
+
+            if (
+                response.status !==
+                'completed'
+            ) {
+                throw new BadGatewayException(
+                    'The AI response was not completed.',
+                );
+            }
+
+            return response.output_text.trim();
+        } finally {
+            if (!reservationHandled) {
+                await this.releaseSafely(
+                    reservation,
+                );
+            }
+        }
     }
 
     async *streamAnswer(
+        userId: string,
         question: string,
         chunks: AnswerContextChunk[],
     ): AsyncGenerator<string> {
-        const client = this.openAiClientService.getClient();
+        const client =
+            this.openAiClientService.getClient();
 
-        const stream = await client.responses.create({
-            model: process.env.OPENAI_CHAT_MODEL ?? 'gpt-4.1-mini',
-            instructions: this.getInstructions(),
-            input: this.buildInput(question, chunks),
-            stream: true,
-        });
+        const instructions =
+            this.getInstructions();
 
-        for await (const event of stream) {
-            if (event.type === 'response.output_text.delta') {
-                yield event.delta;
+        const input =
+            this.buildInput(
+                question,
+                chunks,
+            );
+
+        const reservation =
+            await this.aiBudgetService.reserveForChat(
+                userId,
+                instructions,
+                input,
+                MAX_CHAT_OUTPUT_TOKENS,
+            );
+
+        let reservationHandled = false;
+        let responseCompleted = false;
+
+        try {
+            const stream =
+                await client.responses.create({
+                    model:
+                        process.env
+                            .OPENAI_CHAT_MODEL ??
+                        'gpt-4.1-mini',
+
+                    instructions,
+                    input,
+
+                    max_output_tokens:
+                    MAX_CHAT_OUTPUT_TOKENS,
+
+                    stream: true,
+                });
+
+            for await (const event of stream) {
+                if (
+                    event.type ===
+                    'response.output_text.delta'
+                ) {
+                    yield event.delta;
+
+                    continue;
+                }
+
+                if (
+                    event.type ===
+                    'response.completed' ||
+                    event.type ===
+                    'response.failed' ||
+                    event.type ===
+                    'response.incomplete'
+                ) {
+                    const usage =
+                        event.response.usage;
+
+                    if (!usage) {
+                        throw new BadGatewayException(
+                            'The AI response did not include token usage.',
+                        );
+                    }
+
+                    /*
+                     * Do not release the reservation
+                     * if settle() itself fails.
+                     * Keeping the reservation is safer
+                     * than allowing unaccounted usage.
+                     */
+                    reservationHandled = true;
+
+                    await this.aiBudgetService.settle(
+                        reservation,
+                        this.toChatTokenUsage(
+                            usage,
+                        ),
+                    );
+
+                    if (
+                        event.type !==
+                        'response.completed'
+                    ) {
+                        throw new BadGatewayException(
+                            'The AI response was not completed.',
+                        );
+                    }
+
+                    responseCompleted = true;
+                }
             }
+
+            if (!responseCompleted) {
+                throw new BadGatewayException(
+                    'The AI response stream ended unexpectedly.',
+                );
+            }
+        } finally {
+            if (!reservationHandled) {
+                await this.releaseSafely(
+                    reservation,
+                );
+            }
+        }
+    }
+
+    private toChatTokenUsage(
+        usage: OpenAiResponseUsage,
+    ): AiTokenUsage {
+        return {
+            chatInputTokens:
+            usage.input_tokens,
+
+            chatCachedInputTokens:
+                usage
+                    .input_tokens_details
+                    ?.cached_tokens ?? 0,
+
+            chatOutputTokens:
+            usage.output_tokens,
+        };
+    }
+
+    private async releaseSafely(
+        reservation: AiBudgetReservation,
+    ): Promise<void> {
+        try {
+            await this.aiBudgetService.release(
+                reservation,
+            );
+        } catch (error) {
+            const stack =
+                error instanceof Error
+                    ? error.stack
+                    : String(error);
+
+            this.logger.error(
+                `Unable to release AI budget reservation for user ${reservation.userId}`,
+                stack,
+            );
         }
     }
 

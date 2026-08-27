@@ -15,10 +15,20 @@ import { ChatService } from './chat.service';
 import { AskQuestionDto } from './dto/ask-question.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
+import {
+    DailyAiBudgetExceededException,
+} from '../ai/daily-ai-budget-exceeded.exception';
 
 type AuthenticatedUser = {
     id: string;
     email: string;
+};
+
+type StreamErrorEvent = {
+    type: 'error';
+    message: string;
+    code?: string;
+    resetAt?: string;
 };
 
 @Controller('chat')
@@ -85,7 +95,8 @@ export class ChatController {
                 },
             );
 
-            if (!response.destroyed) {
+            if (!response.destroyed &&
+                !response.writableEnded) {
                 response.write(
                     `${JSON.stringify({
                         type: 'complete',
@@ -94,18 +105,33 @@ export class ChatController {
                 );
             }
         } catch (error) {
-            this.logger.error(
-                'Failed to stream an answer',
-                error instanceof Error ? error.stack : undefined,
-            );
+            if (
+                error instanceof
+                DailyAiBudgetExceededException
+            ) {
+                this.logger.warn(
+                    `Daily AI budget exceeded for user ${user.id}`,
+                );
+            } else {
+                this.logger.error(
+                    'Failed to stream an answer',
 
-            if (!response.destroyed && !response.writableEnded) {
+                    error instanceof Error
+                        ? error.stack
+                        : undefined,
+                );
+            }
+
+            if (
+                !response.destroyed &&
+                !response.writableEnded
+            ) {
                 response.write(
-                    `${JSON.stringify({
-                        type: 'error',
-                        message:
-                            'Unable to generate an answer. Please try again.',
-                    })}\n`,
+                    `${JSON.stringify(
+                        this.createStreamErrorEvent(
+                            error,
+                        ),
+                    )}\n`,
                 );
             }
         } finally {
@@ -127,5 +153,30 @@ export class ChatController {
     @HttpCode(HttpStatus.OK)
     clearMessages(@CurrentUser() user: AuthenticatedUser) {
         return this.chatService.clearMessages(user.id);
+    }
+
+    private createStreamErrorEvent(
+        error: unknown,
+    ): StreamErrorEvent {
+        if (
+            error instanceof
+            DailyAiBudgetExceededException
+        ) {
+            const body =
+                error.getBody();
+
+            return {
+                type: 'error',
+                code: body.code,
+                message: body.message,
+                resetAt: body.resetAt,
+            };
+        }
+
+        return {
+            type: 'error',
+            message:
+                'Unable to generate an answer. Please try again.',
+        };
     }
 }

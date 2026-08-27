@@ -95,6 +95,7 @@ export class ChatService {
 
         if (onDelta) {
             for await (const delta of this.answerGenerationService.streamAnswer(
+                userId,
                 normalizedQuestion,
                 answerContext,
             )) {
@@ -103,6 +104,7 @@ export class ChatService {
             }
         } else {
             answer = await this.answerGenerationService.generateAnswer(
+                userId,
                 normalizedQuestion,
                 answerContext,
             );

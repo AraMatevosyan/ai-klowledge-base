@@ -73,6 +73,26 @@ The project demonstrates practical experience with full-stack development, docum
 - Example questions
 - Global action blocking during upload, retry and AI streaming
 
+### Daily AI usage budget
+
+The application enforces a daily AI spending limit for each user.
+
+Before an OpenAI request is made, the maximum estimated request cost is reserved. After the request completes, the reservation is replaced with the actual cost calculated from input, cached input, output, or embedding tokens.
+
+Unused reservations are released when an OpenAI request fails.
+
+The limit resets every day at 00:00 UTC.
+
+Required environment variables:
+
+- `DAILY_AI_BUDGET_USD`
+- `OPENAI_CHAT_INPUT_USD_PER_MILLION_TOKENS`
+- `OPENAI_CHAT_CACHED_INPUT_USD_PER_MILLION_TOKENS`
+- `OPENAI_CHAT_OUTPUT_USD_PER_MILLION_TOKENS`
+- `OPENAI_EMBEDDING_USD_PER_MILLION_TOKENS`
+
+Pricing values must match the OpenAI models configured by `OPENAI_CHAT_MODEL` and `OPENAI_EMBEDDING_MODEL`.
+
 ## Tech stack
 
 ### Frontend

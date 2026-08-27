@@ -222,16 +222,19 @@ describe('ChatService', () => {
             'Which technologies are mentioned?',
         );
 
-        expect(answerGenerationService.generateAnswer).toHaveBeenCalledWith(
+        expect(
+            answerGenerationService.generateAnswer,
+        ).toHaveBeenCalledWith(
+            'user-1',
             'Which technologies are mentioned?',
             [
                 {
                     documentId: 'document-1',
                     documentName: 'invoice.pdf',
                     pageNumber: 1,
-                    content: 'Invoice total: 700 EUR.',
+                    content:
+                        'Invoice total: 700 EUR.',
                 },
-
                 {
                     documentId: 'document-2',
                     documentName: 'resume.pdf',

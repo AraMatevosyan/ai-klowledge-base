@@ -7,25 +7,59 @@ type AskQuestionStreamOptions = {
     onEvent: (event: ChatStreamEvent) => void;
 };
 
-async function getErrorMessage(response: Response): Promise<string> {
+type ChatErrorResponse = {
+    message?: string | string[];
+    code?: string;
+    resetAt?: string;
+};
+
+export class ChatRequestError extends Error {
+    constructor(
+        message: string,
+        public readonly code?: string,
+        public readonly resetAt?: string,
+    ) {
+        super(message);
+
+        this.name = 'ChatRequestError';
+    }
+}
+
+function normalizeErrorMessage(
+    message: string | string[] | undefined,
+    fallbackMessage: string,
+): string {
+    if (Array.isArray(message)) {
+        return message.join(', ');
+    }
+
+    return message ?? fallbackMessage;
+}
+
+async function createResponseError(
+    response: Response,
+): Promise<ChatRequestError> {
+    const fallbackMessage = `Request failed with status ${response.status}.`;
+
     const responseText = await response.text();
 
     if (!responseText) {
-        return `Request failed with status ${response.status}.`;
+        return new ChatRequestError(fallbackMessage);
     }
 
     try {
-        const data = JSON.parse(responseText) as {
-            message?: string | string[];
-        };
+        const data = JSON.parse(responseText) as ChatErrorResponse;
 
-        if (Array.isArray(data.message)) {
-            return data.message.join(', ');
-        }
-
-        return data.message ?? `Request failed with status ${response.status}.`;
+        return new ChatRequestError(
+            normalizeErrorMessage(
+                data.message,
+                fallbackMessage,
+            ),
+            data.code,
+            data.resetAt,
+        );
     } catch {
-        return responseText;
+        return new ChatRequestError(responseText);
     }
 }
 
@@ -47,7 +81,7 @@ export async function askQuestionStream({
     });
 
     if (!response.ok) {
-        throw new Error(await getErrorMessage(response));
+        throw await createResponseError(response);
     }
 
     if (!response.body) {
@@ -77,7 +111,11 @@ export async function askQuestionStream({
         }
 
         if (event.type === 'error') {
-            throw new Error(event.message);
+            throw new ChatRequestError(
+                event.message,
+                event.code,
+                event.resetAt,
+            );
         }
 
         if (event.type === 'complete') {

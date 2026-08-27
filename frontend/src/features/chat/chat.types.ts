@@ -34,16 +34,23 @@ export type ChatMessagesResponse = {
     messages: ChatMessage[];
 };
 
+export const DAILY_AI_BUDGET_EXCEEDED_CODE =
+    'DAILY_AI_BUDGET_EXCEEDED' as const;
+
+export type ChatStreamErrorEvent = {
+    type: 'error';
+    message: string;
+    code?: string;
+    resetAt?: string;
+};
+
 export type ChatStreamEvent =
     | {
-          type: 'delta';
-          content: string;
-      }
+    type: 'delta';
+    content: string;
+}
     | {
-          type: 'complete';
-          data: AskQuestionResponse;
-      }
-    | {
-          type: 'error';
-          message: string;
-      };
+    type: 'complete';
+    data: AskQuestionResponse;
+}
+    | ChatStreamErrorEvent;

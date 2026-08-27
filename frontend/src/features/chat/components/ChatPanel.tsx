@@ -9,6 +9,7 @@ import {
 } from 'react';
 import {
     Alert,
+    AlertTitle,
     Box,
     Button,
     Chip,
@@ -19,12 +20,56 @@ import {
     Typography,
 } from '@mui/material';
 import { useDocuments } from '@/features/documents/documents.queries';
-import { askQuestionStream } from '../chat.api';
-import type { ChatMessage } from '../chat.types';
+import { askQuestionStream, ChatRequestError } from '../chat.api';
+import {
+    DAILY_AI_BUDGET_EXCEEDED_CODE,
+    type ChatMessage,
+} from '../chat.types';
 import { useChatMessages } from '../chat.queries';
 import { ClearChatHistoryButton } from './ClearChatHistoryButton';
 import { appOperationKeys, useAppOperationState } from '@/lib/app-operation';
 import { useMutation } from '@tanstack/react-query';
+
+type ChatErrorState = {
+    message: string;
+    code?: string;
+    resetAt?: string;
+};
+
+function isDailyBudgetError(
+    error: ChatErrorState,
+): boolean {
+    return (
+        error.code ===
+        DAILY_AI_BUDGET_EXCEEDED_CODE
+    );
+}
+
+function getChatErrorMessage(
+    error: ChatErrorState,
+): string {
+    if (!isDailyBudgetError(error)) {
+        return error.message;
+    }
+
+    if (!error.resetAt) {
+        return "You've reached today's AI usage limit. Please try again after the daily limit resets.";
+    }
+
+    const resetDate = new Date(error.resetAt);
+
+    if (Number.isNaN(resetDate.getTime())) {
+        return "You've reached today's AI usage limit. Please try again after the daily limit resets.";
+    }
+
+    const formattedResetDate =
+        new Intl.DateTimeFormat('en-US', {
+            dateStyle: 'medium',
+            timeStyle: 'short',
+        }).format(resetDate);
+
+    return `You've reached today's AI usage limit. You can ask more questions after ${formattedResetDate}.`;
+}
 
 function createMessageId() {
     return crypto.randomUUID();
@@ -37,7 +82,8 @@ export function ChatPanel() {
 
     const [hasReceivedDelta, setHasReceivedDelta] = useState(false);
 
-    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [chatError, setChatError] =
+        useState<ChatErrorState | null>(null);
 
     const formRef = useRef<HTMLFormElement>(null);
 
@@ -124,7 +170,7 @@ export function ChatPanel() {
         setMessages((currentMessages) => [...currentMessages, userMessage]);
 
         setQuestion('');
-        setErrorMessage(null);
+        setChatError(null);
         setHasReceivedDelta(false);
 
         const abortController = new AbortController();
@@ -221,11 +267,20 @@ export function ChatPanel() {
                 ),
             );
 
-            setErrorMessage(
-                error instanceof Error
-                    ? error.message
-                    : 'Unable to generate an answer. Please try again.',
-            );
+            if (error instanceof ChatRequestError) {
+                setChatError({
+                    message: error.message,
+                    code: error.code,
+                    resetAt: error.resetAt,
+                });
+            } else {
+                setChatError({
+                    message:
+                        error instanceof Error
+                            ? error.message
+                            : 'Unable to generate an answer. Please try again.',
+                });
+            }
         } finally {
             if (abortControllerRef.current === abortController) {
                 abortControllerRef.current = null;
@@ -574,7 +629,23 @@ export function ChatPanel() {
                     </Stack>
                 </Box>
 
-                {errorMessage && <Alert severity="error">{errorMessage}</Alert>}
+                {chatError && (
+                    <Alert
+                        severity={
+                            isDailyBudgetError(chatError)
+                                ? 'warning'
+                                : 'error'
+                        }
+                    >
+                        <AlertTitle>
+                            {isDailyBudgetError(chatError)
+                                ? 'Daily AI limit reached'
+                                : 'Unable to generate an answer'}
+                        </AlertTitle>
+
+                        {getChatErrorMessage(chatError)}
+                    </Alert>
+                )}
 
                 {chatMessagesQuery.isError && (
                     <Alert severity="error">
