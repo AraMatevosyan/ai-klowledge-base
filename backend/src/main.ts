@@ -1,6 +1,6 @@
 import {
+    Logger,
     ValidationPipe,
-    Logger
 } from '@nestjs/common';
 import {
     ConfigService,
@@ -12,11 +12,13 @@ import cookieParser from 'cookie-parser';
 import type {
     Express,
 } from 'express';
+import helmet from 'helmet';
 import {
     AppModule,
 } from './app.module';
-import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
-import helmet from 'helmet';
+import {
+    AllExceptionsFilter,
+} from './common/filters/all-exceptions.filter';
 
 async function bootstrap() {
     const app =
@@ -61,7 +63,9 @@ async function bootstrap() {
     }
 
     app.useGlobalFilters(
-        new AllExceptionsFilter(configService),
+        new AllExceptionsFilter(
+            configService,
+        ),
     );
 
     app.setGlobalPrefix('api');
@@ -90,10 +94,8 @@ async function bootstrap() {
     app.useGlobalPipes(
         new ValidationPipe({
             whitelist: true,
-
             forbidNonWhitelisted:
                 true,
-
             transform: true,
         }),
     );
@@ -109,7 +111,7 @@ async function bootstrap() {
 const bootstrapLogger =
     new Logger('Bootstrap');
 
-bootstrap().catch(
+void bootstrap().catch(
     (error: unknown) => {
         const stack =
             error instanceof Error
@@ -123,4 +125,4 @@ bootstrap().catch(
 
         process.exit(1);
     },
-);void bootstrap();
+);
