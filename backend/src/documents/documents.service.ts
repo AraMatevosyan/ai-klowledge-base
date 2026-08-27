@@ -294,7 +294,6 @@ export class DocumentsService {
 
                 await transaction.documentPage.createMany({
                     data: extractedPdf.pages.map((page) => ({
-                        userId,
                         documentId,
                         pageNumber: page.pageNumber,
                         text: page.text,
@@ -303,7 +302,6 @@ export class DocumentsService {
 
                 await transaction.documentChunk.createMany({
                     data: chunks.map((chunk) => ({
-                        userId,
                         documentId,
                         pageNumber: chunk.pageNumber,
                         chunkIndex: chunk.chunkIndex,
