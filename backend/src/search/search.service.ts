@@ -85,7 +85,11 @@ export class SearchService {
             return this.retrieveAllDocumentsSummary(userId, normalizedQuery);
         }
 
-        const vectorValue = await this.createVectorValue(normalizedQuery);
+        const vectorValue =
+            await this.createVectorValue(
+                userId,
+                normalizedQuery,
+            );
 
         const candidates = await this.findSemanticCandidates(
             userId,
@@ -124,7 +128,11 @@ export class SearchService {
         userId: string,
         query: string,
     ): Promise<SearchResult[]> {
-        const vectorValue = await this.createVectorValue(query);
+        const vectorValue =
+            await this.createVectorValue(
+                userId,
+                query,
+            );
 
         const candidates = await this.findSemanticCandidates(
             userId,
@@ -387,7 +395,11 @@ export class SearchService {
             };
         }
 
-        const vectorValue = await this.createVectorValue(query);
+        const vectorValue =
+            await this.createVectorValue(
+                userId,
+                query,
+            );
 
         const results = await this.findOrderedChunks(
             userId,
@@ -429,7 +441,11 @@ export class SearchService {
             };
         }
 
-        const vectorValue = await this.createVectorValue(query);
+        const vectorValue =
+            await this.createVectorValue(
+                userId,
+                query,
+            );
 
         const chunksByDocument = await Promise.all(
             documents.map((document) =>
@@ -563,8 +579,15 @@ export class SearchService {
         );
     }
 
-    private async createVectorValue(query: string): Promise<string> {
-        const embedding = await this.embeddingsService.createOne(query.trim());
+    private async createVectorValue(
+        userId: string,
+        query: string,
+    ): Promise<string> {
+        const embedding =
+            await this.embeddingsService.createOne(
+                userId,
+                query.trim(),
+            );
 
         return `[${embedding.join(',')}]`;
     }

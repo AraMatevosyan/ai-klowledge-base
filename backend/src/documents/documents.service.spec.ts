@@ -24,6 +24,7 @@ type ProcessDocumentResult = {
 
 type DocumentsServicePrivate = {
     processDocument(
+        userId: string,
         documentId: string,
         fileBuffer: Buffer,
     ): Promise<ProcessDocumentResult>;
@@ -94,7 +95,7 @@ describe('DocumentsService.retryProcessing', () => {
 
     afterEach(async () => {
         jest.restoreAllMocks();
-        jest.clearAllMocks();
+        jest.resetAllMocks();
 
         await rm(uploadDirectory, {
             recursive: true,
@@ -187,17 +188,27 @@ describe('DocumentsService.retryProcessing', () => {
     });
 
     it('restarts processing for a failed document', async () => {
-        const storageKey = 'user-1/document-1.pdf';
+        const storageKey =
+            'user-1/document-1.pdf';
 
-        const userDirectory = join(uploadDirectory, 'user-1');
+        const userDirectory = join(
+            uploadDirectory,
+            'user-1',
+        );
 
-        const filePath = join(uploadDirectory, storageKey);
+        const filePath = join(
+            uploadDirectory,
+            storageKey,
+        );
 
         await mkdir(userDirectory, {
             recursive: true,
         });
 
-        await writeFile(filePath, '%PDF-1.4 fake PDF');
+        await writeFile(
+            filePath,
+            '%PDF-1.4 fake PDF',
+        );
 
         prisma.document.findFirst.mockResolvedValue({
             id: 'document-1',
@@ -209,7 +220,8 @@ describe('DocumentsService.retryProcessing', () => {
             count: 1,
         });
 
-        const privateService = service as unknown as DocumentsServicePrivate;
+        const privateService =
+            service as unknown as DocumentsServicePrivate;
 
         const processDocumentSpy = jest.spyOn(
             privateService,
@@ -223,9 +235,15 @@ describe('DocumentsService.retryProcessing', () => {
             },
         });
 
-        const result = await service.retryProcessing('user-1', 'document-1');
+        const result =
+            await service.retryProcessing(
+                'user-1',
+                'document-1',
+            );
 
-        expect(prisma.document.updateMany).toHaveBeenCalledWith({
+        expect(
+            prisma.document.updateMany,
+        ).toHaveBeenCalledWith({
             where: {
                 id: 'document-1',
                 userId: 'user-1',
@@ -237,14 +255,24 @@ describe('DocumentsService.retryProcessing', () => {
             },
         });
 
-        expect(processDocumentSpy).toHaveBeenCalledTimes(1);
+        expect(
+            processDocumentSpy,
+        ).toHaveBeenCalledTimes(1);
 
-        const [processedDocumentId, processedFile] =
-            processDocumentSpy.mock.calls[0];
+        expect(
+            processDocumentSpy,
+        ).toHaveBeenCalledWith(
+            'user-1',
+            'document-1',
+            expect.any(Buffer),
+        );
 
-        expect(processedDocumentId).toBe('document-1');
+        const processedFile =
+            processDocumentSpy.mock.calls[0]?.[2];
 
-        expect(processedFile.toString()).toBe('%PDF-1.4 fake PDF');
+        expect(
+            processedFile?.toString(),
+        ).toBe('%PDF-1.4 fake PDF');
 
         expect(result).toEqual({
             document: {

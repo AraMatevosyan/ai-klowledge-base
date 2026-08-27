@@ -100,6 +100,30 @@ import {DEFAULT_AUTH_TOKEN_TTL_SECONDS} from "./auth/auth.constants";
                             .default(
                                 'storage/documents',
                             ),
+                    DAILY_AI_BUDGET_USD: Joi.number()
+                        .positive()
+                        .precision(6)
+                        .default(0.1),
+
+                    OPENAI_CHAT_INPUT_USD_PER_MILLION_TOKENS:
+                        Joi.number()
+                            .positive()
+                            .default(0.4),
+
+                    OPENAI_CHAT_CACHED_INPUT_USD_PER_MILLION_TOKENS:
+                        Joi.number()
+                            .positive()
+                            .default(0.1),
+
+                    OPENAI_CHAT_OUTPUT_USD_PER_MILLION_TOKENS:
+                        Joi.number()
+                            .positive()
+                            .default(1.6),
+
+                    OPENAI_EMBEDDING_USD_PER_MILLION_TOKENS:
+                        Joi.number()
+                            .positive()
+                            .default(0.02),
                 }),
 
             validationOptions: {

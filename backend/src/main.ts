@@ -1,5 +1,6 @@
 import {
     ValidationPipe,
+    Logger
 } from '@nestjs/common';
 import {
     ConfigService,
@@ -15,12 +16,15 @@ import {
     AppModule,
 } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import helmet from 'helmet';
 
 async function bootstrap() {
     const app =
         await NestFactory.create(
             AppModule,
         );
+
+    app.use(helmet());
 
     const configService =
         app.get(ConfigService);
@@ -102,4 +106,21 @@ async function bootstrap() {
     );
 }
 
-void bootstrap();
+const bootstrapLogger =
+    new Logger('Bootstrap');
+
+bootstrap().catch(
+    (error: unknown) => {
+        const stack =
+            error instanceof Error
+                ? error.stack
+                : String(error);
+
+        bootstrapLogger.error(
+            'Failed to start application',
+            stack,
+        );
+
+        process.exit(1);
+    },
+);void bootstrap();

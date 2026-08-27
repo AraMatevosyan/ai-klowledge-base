@@ -84,4 +84,8 @@ HEALTHCHECK \
     CMD node -e \
     "fetch('http://127.0.0.1:3001/api').then((response) => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1));"
 
-CMD ["node", "dist/main.js"]
+CMD [
+    "sh",
+    "-c",
+    "npm run prisma:migrate:deploy && exec node dist/main.js"
+]

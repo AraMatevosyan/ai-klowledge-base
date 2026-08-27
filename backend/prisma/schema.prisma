@@ -29,6 +29,7 @@ model User {
 
   documents Document[]
   messages  Message[]
+  aiDailyUsages AiDailyUsage[]
 
   @@map("users")
 }
@@ -95,4 +96,26 @@ model Message {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
+}
+
+model AiDailyUsage {
+  userId    String   @map("user_id")
+  usageDate DateTime @db.Date @map("usage_date")
+
+  spentNanoUsd    BigInt @default(0) @map("spent_nano_usd")
+  reservedNanoUsd BigInt @default(0) @map("reserved_nano_usd")
+
+  chatInputTokens       Int @default(0) @map("chat_input_tokens")
+  chatCachedInputTokens Int @default(0) @map("chat_cached_input_tokens")
+  chatOutputTokens      Int @default(0) @map("chat_output_tokens")
+  embeddingTokens       Int @default(0) @map("embedding_tokens")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation( fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, usageDate])
+  @@index([usageDate])
+  @@map("ai_daily_usage")
 }

@@ -173,32 +173,11 @@ export class DocumentsService {
             );
         }
 
-        try {
-            return this.processDocument(documentId, file.buffer);
-        } catch (error) {
-            const message =
-                error instanceof PdfProcessingError
-                    ? error.message
-                    : error instanceof HttpException
-                      ? error.message
-                      : 'Failed to process document';
-
-            await this.markAsFailed(documentId, message);
-
-            this.logError(`Failed to process document ${documentId}`, error);
-
-            if (error instanceof PdfProcessingError) {
-                throw new UnprocessableEntityException(message);
-            }
-
-            if (error instanceof HttpException) {
-                throw error;
-            }
-
-            throw new InternalServerErrorException(
-                'Failed to process document',
-            );
-        }
+        return this.processDocument(
+            userId,
+            documentId,
+            file.buffer,
+        );
     }
 
     async retryProcessing(userId: string, documentId: string) {
@@ -279,10 +258,18 @@ export class DocumentsService {
             );
         }
 
-        return this.processDocument(documentId, fileBuffer);
+        return this.processDocument(
+            userId,
+            documentId,
+            fileBuffer,
+        );
     }
 
-    private async processDocument(documentId: string, fileBuffer: Buffer) {
+    private async processDocument(
+        userId: string,
+        documentId: string,
+        fileBuffer: Buffer,
+        ) {
         try {
             const extractedPdf = await this.pdfProcessor.extract(fileBuffer);
 
@@ -307,6 +294,7 @@ export class DocumentsService {
 
                 await transaction.documentPage.createMany({
                     data: extractedPdf.pages.map((page) => ({
+                        userId,
                         documentId,
                         pageNumber: page.pageNumber,
                         text: page.text,
@@ -315,6 +303,7 @@ export class DocumentsService {
 
                 await transaction.documentChunk.createMany({
                     data: chunks.map((chunk) => ({
+                        userId,
                         documentId,
                         pageNumber: chunk.pageNumber,
                         chunkIndex: chunk.chunkIndex,
@@ -349,6 +338,7 @@ export class DocumentsService {
             });
 
             const embeddings = await this.embeddingsService.createMany(
+                userId,
                 storedChunks.map((chunk) => chunk.content),
             );
 
