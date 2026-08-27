@@ -1,8 +1,6 @@
 import type { ChatMessagesResponse, ChatStreamEvent } from './chat.types';
 import { apiRequest } from '@/lib/api';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api';
-
 type AskQuestionStreamOptions = {
     question: string;
     signal?: AbortSignal;
@@ -36,7 +34,7 @@ export async function askQuestionStream({
     signal,
     onEvent,
 }: AskQuestionStreamOptions): Promise<void> {
-    const response = await fetch(`${API_URL}/chat/ask/stream`, {
+    const response = await fetch('/api/chat/ask/stream', {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -134,7 +132,7 @@ export type ClearChatHistoryResponse = {
 
 export async function clearChatHistory(): Promise<ClearChatHistoryResponse> {
     const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/chat/messages`,
+        '/api/chat/messages',
         {
             method: 'DELETE',
             credentials: 'include',
