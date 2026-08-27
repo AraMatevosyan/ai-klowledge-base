@@ -27,8 +27,8 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  documents Document[]
-  messages  Message[]
+  documents     Document[]
+  messages      Message[]
   aiDailyUsages AiDailyUsage[]
 
   @@map("users")
@@ -100,7 +100,7 @@ model Message {
 
 model AiDailyUsage {
   userId    String   @map("user_id")
-  usageDate DateTime @db.Date @map("usage_date")
+  usageDate DateTime @map("usage_date") @db.Date
 
   spentNanoUsd    BigInt @default(0) @map("spent_nano_usd")
   reservedNanoUsd BigInt @default(0) @map("reserved_nano_usd")
@@ -113,7 +113,7 @@ model AiDailyUsage {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  user User @relation( fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([userId, usageDate])
   @@index([usageDate])

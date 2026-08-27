@@ -46,11 +46,11 @@ export type ChatStreamErrorEvent = {
 
 export type ChatStreamEvent =
     | {
-    type: 'delta';
-    content: string;
-}
+          type: 'delta';
+          content: string;
+      }
     | {
-    type: 'complete';
-    data: AskQuestionResponse;
-}
+          type: 'complete';
+          data: AskQuestionResponse;
+      }
     | ChatStreamErrorEvent;

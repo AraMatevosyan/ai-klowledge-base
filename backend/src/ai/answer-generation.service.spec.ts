@@ -9,9 +9,7 @@ import type { OpenAiClientService } from './openai-client.service';
 const reservation = {
     userId: 'user-1',
 
-    usageDate: new Date(
-        '2026-08-27T00:00:00.000Z',
-    ),
+    usageDate: new Date('2026-08-27T00:00:00.000Z'),
 
     amountNanoUsd: 1_000_000n,
 };
@@ -21,8 +19,7 @@ const chunks: AnswerContextChunk[] = [
         documentId: 'document-1',
         documentName: 'resume.pdf',
         pageNumber: 1,
-        content:
-            'Ara is a frontend engineer.',
+        content: 'Ara is a frontend engineer.',
     },
 ];
 
@@ -44,156 +41,88 @@ describe('AnswerGenerationService', () => {
     beforeEach(() => {
         jest.clearAllMocks();
 
-        openAiClientService
-            .getClient
-            .mockReturnValue({
-                responses: {
-                    create:
-                    responsesCreate,
-                },
-            });
+        openAiClientService.getClient.mockReturnValue({
+            responses: {
+                create: responsesCreate,
+            },
+        });
 
-        aiBudgetService
-            .reserveForChat
-            .mockResolvedValue(
-                reservation,
-            );
+        aiBudgetService.reserveForChat.mockResolvedValue(reservation);
 
-        aiBudgetService
-            .settle
-            .mockResolvedValue(
-                undefined,
-            );
+        aiBudgetService.settle.mockResolvedValue(undefined);
 
-        aiBudgetService
-            .release
-            .mockResolvedValue(
-                undefined,
-            );
+        aiBudgetService.release.mockResolvedValue(undefined);
 
-        service =
-            new AnswerGenerationService(
-                openAiClientService as unknown as OpenAiClientService,
+        service = new AnswerGenerationService(
+            openAiClientService as unknown as OpenAiClientService,
 
-                aiBudgetService as unknown as AiBudgetService,
-            );
+            aiBudgetService as unknown as AiBudgetService,
+        );
     });
 
     it('preserves the daily budget error for a regular answer', async () => {
-        const budgetError =
-            new DailyAiBudgetExceededException(
-                new Date(
-                    '2026-08-28T00:00:00.000Z',
-                ),
-            );
-
-        aiBudgetService
-            .reserveForChat
-            .mockRejectedValue(
-                budgetError,
-            );
-
-        await expect(
-            service.generateAnswer(
-                'user-1',
-                'What does Ara do?',
-                chunks,
-            ),
-        ).rejects.toBe(
-            budgetError,
+        const budgetError = new DailyAiBudgetExceededException(
+            new Date('2026-08-28T00:00:00.000Z'),
         );
 
-        expect(
-            aiBudgetService
-                .reserveForChat,
-        ).toHaveBeenCalledWith(
+        aiBudgetService.reserveForChat.mockRejectedValue(budgetError);
+
+        await expect(
+            service.generateAnswer('user-1', 'What does Ara do?', chunks),
+        ).rejects.toBe(budgetError);
+
+        expect(aiBudgetService.reserveForChat).toHaveBeenCalledWith(
             'user-1',
-            expect.stringContaining(
-                'GROUNDING RULES',
-            ),
-            expect.stringContaining(
-                'What does Ara do?',
-            ),
+            expect.stringContaining('GROUNDING RULES'),
+            expect.stringContaining('What does Ara do?'),
             1_000,
         );
 
-        expect(
-            responsesCreate,
-        ).not.toHaveBeenCalled();
+        expect(responsesCreate).not.toHaveBeenCalled();
 
-        expect(
-            aiBudgetService.settle,
-        ).not.toHaveBeenCalled();
+        expect(aiBudgetService.settle).not.toHaveBeenCalled();
 
-        expect(
-            aiBudgetService.release,
-        ).not.toHaveBeenCalled();
+        expect(aiBudgetService.release).not.toHaveBeenCalled();
     });
 
     it('preserves the daily budget error for a streaming answer', async () => {
-        const budgetError =
-            new DailyAiBudgetExceededException(
-                new Date(
-                    '2026-08-28T00:00:00.000Z',
-                ),
-            );
+        const budgetError = new DailyAiBudgetExceededException(
+            new Date('2026-08-28T00:00:00.000Z'),
+        );
 
-        aiBudgetService
-            .reserveForChat
-            .mockRejectedValue(
-                budgetError,
-            );
+        aiBudgetService.reserveForChat.mockRejectedValue(budgetError);
 
-        const stream =
-            service.streamAnswer(
-                'user-1',
-                'What does Ara do?',
-                chunks,
-            );
+        const stream = service.streamAnswer(
+            'user-1',
+            'What does Ara do?',
+            chunks,
+        );
 
         /*
          * Async generator code starts only
          * after next() is called.
          */
-        await expect(
-            stream.next(),
-        ).rejects.toBe(
-            budgetError,
-        );
+        await expect(stream.next()).rejects.toBe(budgetError);
 
-        expect(
-            aiBudgetService
-                .reserveForChat,
-        ).toHaveBeenCalledWith(
+        expect(aiBudgetService.reserveForChat).toHaveBeenCalledWith(
             'user-1',
-            expect.stringContaining(
-                'GROUNDING RULES',
-            ),
-            expect.stringContaining(
-                'What does Ara do?',
-            ),
+            expect.stringContaining('GROUNDING RULES'),
+            expect.stringContaining('What does Ara do?'),
             1_000,
         );
 
-        expect(
-            responsesCreate,
-        ).not.toHaveBeenCalled();
+        expect(responsesCreate).not.toHaveBeenCalled();
 
-        expect(
-            aiBudgetService.settle,
-        ).not.toHaveBeenCalled();
+        expect(aiBudgetService.settle).not.toHaveBeenCalled();
 
-        expect(
-            aiBudgetService.release,
-        ).not.toHaveBeenCalled();
+        expect(aiBudgetService.release).not.toHaveBeenCalled();
     });
 
     it('settles actual token usage for a regular answer', async () => {
         responsesCreate.mockResolvedValue({
             status: 'completed',
 
-            output_text:
-                ' Ara is a frontend engineer. ',
+            output_text: ' Ara is a frontend engineer. ',
 
             usage: {
                 input_tokens: 120,
@@ -205,51 +134,37 @@ describe('AnswerGenerationService', () => {
             },
         });
 
-        const answer =
-            await service.generateAnswer(
-                'user-1',
-                'What does Ara do?',
-                chunks,
-            );
-
-        expect(answer).toBe(
-            'Ara is a frontend engineer.',
+        const answer = await service.generateAnswer(
+            'user-1',
+            'What does Ara do?',
+            chunks,
         );
 
-        expect(
-            aiBudgetService.settle,
-        ).toHaveBeenCalledWith(
-            reservation,
-            {
-                chatInputTokens: 120,
-                chatCachedInputTokens: 40,
-                chatOutputTokens: 30,
-            },
-        );
+        expect(answer).toBe('Ara is a frontend engineer.');
 
-        expect(
-            aiBudgetService.release,
-        ).not.toHaveBeenCalled();
+        expect(aiBudgetService.settle).toHaveBeenCalledWith(reservation, {
+            chatInputTokens: 120,
+            chatCachedInputTokens: 40,
+            chatOutputTokens: 30,
+        });
+
+        expect(aiBudgetService.release).not.toHaveBeenCalled();
     });
 
     it('settles actual token usage for a streaming answer', async () => {
         async function* createStream() {
             yield {
-                type:
-                    'response.output_text.delta',
+                type: 'response.output_text.delta',
                 delta: 'Ara is ',
             };
 
             yield {
-                type:
-                    'response.output_text.delta',
-                delta:
-                    'a frontend engineer.',
+                type: 'response.output_text.delta',
+                delta: 'a frontend engineer.',
             };
 
             yield {
-                type:
-                    'response.completed',
+                type: 'response.completed',
 
                 response: {
                     usage: {
@@ -264,41 +179,26 @@ describe('AnswerGenerationService', () => {
             };
         }
 
-        responsesCreate.mockResolvedValue(
-            createStream(),
-        );
+        responsesCreate.mockResolvedValue(createStream());
 
         const deltas: string[] = [];
 
-        for await (
-            const delta of
-            service.streamAnswer(
-                'user-1',
-                'What does Ara do?',
-                chunks,
-            )
-            ) {
+        for await (const delta of service.streamAnswer(
+            'user-1',
+            'What does Ara do?',
+            chunks,
+        )) {
             deltas.push(delta);
         }
 
-        expect(deltas).toEqual([
-            'Ara is ',
-            'a frontend engineer.',
-        ]);
+        expect(deltas).toEqual(['Ara is ', 'a frontend engineer.']);
 
-        expect(
-            aiBudgetService.settle,
-        ).toHaveBeenCalledWith(
-            reservation,
-            {
-                chatInputTokens: 150,
-                chatCachedInputTokens: 50,
-                chatOutputTokens: 35,
-            },
-        );
+        expect(aiBudgetService.settle).toHaveBeenCalledWith(reservation, {
+            chatInputTokens: 150,
+            chatCachedInputTokens: 50,
+            chatOutputTokens: 35,
+        });
 
-        expect(
-            aiBudgetService.release,
-        ).not.toHaveBeenCalled();
+        expect(aiBudgetService.release).not.toHaveBeenCalled();
     });
 });

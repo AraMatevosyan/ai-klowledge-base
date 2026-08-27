@@ -1,14 +1,7 @@
-import {
-    BadGatewayException,
-    Injectable,
-    Logger,
-} from '@nestjs/common';
+import { BadGatewayException, Injectable, Logger } from '@nestjs/common';
 import { OpenAiClientService } from './openai-client.service';
 import { AiBudgetService } from './ai-budget.service';
-import type {
-    AiBudgetReservation,
-    AiTokenUsage,
-} from './ai-budget.types';
+import type { AiBudgetReservation, AiTokenUsage } from './ai-budget.types';
 
 const MAX_CHAT_OUTPUT_TOKENS = 1_000;
 
@@ -30,17 +23,12 @@ export type AnswerContextChunk = {
 
 @Injectable()
 export class AnswerGenerationService {
-    private readonly logger =
-        new Logger(
-            AnswerGenerationService.name,
-        );
+    private readonly logger = new Logger(AnswerGenerationService.name);
 
     constructor(
-        private readonly openAiClientService:
-        OpenAiClientService,
+        private readonly openAiClientService: OpenAiClientService,
 
-        private readonly aiBudgetService:
-        AiBudgetService,
+        private readonly aiBudgetService: AiBudgetService,
     ) {}
 
     async generateAnswer(
@@ -48,42 +36,30 @@ export class AnswerGenerationService {
         question: string,
         chunks: AnswerContextChunk[],
     ): Promise<string> {
-        const client =
-            this.openAiClientService.getClient();
+        const client = this.openAiClientService.getClient();
 
-        const instructions =
-            this.getInstructions();
+        const instructions = this.getInstructions();
 
-        const input =
-            this.buildInput(
-                question,
-                chunks,
-            );
+        const input = this.buildInput(question, chunks);
 
-        const reservation =
-            await this.aiBudgetService.reserveForChat(
-                userId,
-                instructions,
-                input,
-                MAX_CHAT_OUTPUT_TOKENS,
-            );
+        const reservation = await this.aiBudgetService.reserveForChat(
+            userId,
+            instructions,
+            input,
+            MAX_CHAT_OUTPUT_TOKENS,
+        );
 
         let reservationHandled = false;
 
         try {
-            const response =
-                await client.responses.create({
-                    model:
-                        process.env
-                            .OPENAI_CHAT_MODEL ??
-                        'gpt-4.1-mini',
+            const response = await client.responses.create({
+                model: process.env.OPENAI_CHAT_MODEL ?? 'gpt-4.1-mini',
 
-                    instructions,
-                    input,
+                instructions,
+                input,
 
-                    max_output_tokens:
-                    MAX_CHAT_OUTPUT_TOKENS,
-                });
+                max_output_tokens: MAX_CHAT_OUTPUT_TOKENS,
+            });
 
             if (!response.usage) {
                 throw new BadGatewayException(
@@ -95,15 +71,10 @@ export class AnswerGenerationService {
 
             await this.aiBudgetService.settle(
                 reservation,
-                this.toChatTokenUsage(
-                    response.usage,
-                ),
+                this.toChatTokenUsage(response.usage),
             );
 
-            if (
-                response.status !==
-                'completed'
-            ) {
+            if (response.status !== 'completed') {
                 throw new BadGatewayException(
                     'The AI response was not completed.',
                 );
@@ -112,9 +83,7 @@ export class AnswerGenerationService {
             return response.output_text.trim();
         } finally {
             if (!reservationHandled) {
-                await this.releaseSafely(
-                    reservation,
-                );
+                await this.releaseSafely(reservation);
             }
         }
     }
@@ -124,66 +93,47 @@ export class AnswerGenerationService {
         question: string,
         chunks: AnswerContextChunk[],
     ): AsyncGenerator<string> {
-        const client =
-            this.openAiClientService.getClient();
+        const client = this.openAiClientService.getClient();
 
-        const instructions =
-            this.getInstructions();
+        const instructions = this.getInstructions();
 
-        const input =
-            this.buildInput(
-                question,
-                chunks,
-            );
+        const input = this.buildInput(question, chunks);
 
-        const reservation =
-            await this.aiBudgetService.reserveForChat(
-                userId,
-                instructions,
-                input,
-                MAX_CHAT_OUTPUT_TOKENS,
-            );
+        const reservation = await this.aiBudgetService.reserveForChat(
+            userId,
+            instructions,
+            input,
+            MAX_CHAT_OUTPUT_TOKENS,
+        );
 
         let reservationHandled = false;
         let responseCompleted = false;
 
         try {
-            const stream =
-                await client.responses.create({
-                    model:
-                        process.env
-                            .OPENAI_CHAT_MODEL ??
-                        'gpt-4.1-mini',
+            const stream = await client.responses.create({
+                model: process.env.OPENAI_CHAT_MODEL ?? 'gpt-4.1-mini',
 
-                    instructions,
-                    input,
+                instructions,
+                input,
 
-                    max_output_tokens:
-                    MAX_CHAT_OUTPUT_TOKENS,
+                max_output_tokens: MAX_CHAT_OUTPUT_TOKENS,
 
-                    stream: true,
-                });
+                stream: true,
+            });
 
             for await (const event of stream) {
-                if (
-                    event.type ===
-                    'response.output_text.delta'
-                ) {
+                if (event.type === 'response.output_text.delta') {
                     yield event.delta;
 
                     continue;
                 }
 
                 if (
-                    event.type ===
-                    'response.completed' ||
-                    event.type ===
-                    'response.failed' ||
-                    event.type ===
-                    'response.incomplete'
+                    event.type === 'response.completed' ||
+                    event.type === 'response.failed' ||
+                    event.type === 'response.incomplete'
                 ) {
-                    const usage =
-                        event.response.usage;
+                    const usage = event.response.usage;
 
                     if (!usage) {
                         throw new BadGatewayException(
@@ -201,15 +151,10 @@ export class AnswerGenerationService {
 
                     await this.aiBudgetService.settle(
                         reservation,
-                        this.toChatTokenUsage(
-                            usage,
-                        ),
+                        this.toChatTokenUsage(usage),
                     );
 
-                    if (
-                        event.type !==
-                        'response.completed'
-                    ) {
+                    if (event.type !== 'response.completed') {
                         throw new BadGatewayException(
                             'The AI response was not completed.',
                         );
@@ -226,27 +171,19 @@ export class AnswerGenerationService {
             }
         } finally {
             if (!reservationHandled) {
-                await this.releaseSafely(
-                    reservation,
-                );
+                await this.releaseSafely(reservation);
             }
         }
     }
 
-    private toChatTokenUsage(
-        usage: OpenAiResponseUsage,
-    ): AiTokenUsage {
+    private toChatTokenUsage(usage: OpenAiResponseUsage): AiTokenUsage {
         return {
-            chatInputTokens:
-            usage.input_tokens,
+            chatInputTokens: usage.input_tokens,
 
             chatCachedInputTokens:
-                usage
-                    .input_tokens_details
-                    ?.cached_tokens ?? 0,
+                usage.input_tokens_details?.cached_tokens ?? 0,
 
-            chatOutputTokens:
-            usage.output_tokens,
+            chatOutputTokens: usage.output_tokens,
         };
     }
 
@@ -254,14 +191,9 @@ export class AnswerGenerationService {
         reservation: AiBudgetReservation,
     ): Promise<void> {
         try {
-            await this.aiBudgetService.release(
-                reservation,
-            );
+            await this.aiBudgetService.release(reservation);
         } catch (error) {
-            const stack =
-                error instanceof Error
-                    ? error.stack
-                    : String(error);
+            const stack = error instanceof Error ? error.stack : String(error);
 
             this.logger.error(
                 `Unable to release AI budget reservation for user ${reservation.userId}`,

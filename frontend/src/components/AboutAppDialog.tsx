@@ -1,8 +1,6 @@
 'use client';
 
-import {
-    useState,
-} from 'react';
+import { useState } from 'react';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded';
@@ -28,8 +26,7 @@ import {
 const usageSteps = [
     {
         title: 'Upload PDF documents',
-        description:
-            'Upload one or more PDF files containing selectable text.',
+        description: 'Upload one or more PDF files containing selectable text.',
     },
     {
         title: 'Wait for processing',
@@ -58,33 +55,19 @@ const exampleQuestions = [
 ];
 
 export function AboutAppDialog() {
-    const [open, setOpen] =
-        useState(false);
+    const [open, setOpen] = useState(false);
 
-    const [
-        copiedQuestion,
-        setCopiedQuestion,
-    ] = useState<string | null>(null);
+    const [copiedQuestion, setCopiedQuestion] = useState<string | null>(null);
 
-    const theme =
-        useTheme();
+    const theme = useTheme();
 
-    const fullScreen =
-        useMediaQuery(
-            theme.breakpoints.down('sm'),
-        );
+    const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
 
-    const handleCopy = async (
-        question: string,
-    ) => {
+    const handleCopy = async (question: string) => {
         try {
-            await navigator.clipboard.writeText(
-                question,
-            );
+            await navigator.clipboard.writeText(question);
 
-            setCopiedQuestion(
-                question,
-            );
+            setCopiedQuestion(question);
         } catch {
             setCopiedQuestion(null);
         }
@@ -96,9 +79,7 @@ export function AboutAppDialog() {
                 <IconButton
                     aria-label="How it works"
                     color="inherit"
-                    onClick={() =>
-                        setOpen(true)
-                    }
+                    onClick={() => setOpen(true)}
                     sx={{
                         display: {
                             xs: 'inline-flex',
@@ -113,12 +94,8 @@ export function AboutAppDialog() {
             <Button
                 color="inherit"
                 size="small"
-                startIcon={
-                    <InfoOutlinedIcon />
-                }
-                onClick={() =>
-                    setOpen(true)
-                }
+                startIcon={<InfoOutlinedIcon />}
+                onClick={() => setOpen(true)}
                 sx={{
                     display: {
                         xs: 'none',
@@ -132,9 +109,7 @@ export function AboutAppDialog() {
 
             <Dialog
                 open={open}
-                onClose={() =>
-                    setOpen(false)
-                }
+                onClose={() => setOpen(false)}
                 fullScreen={fullScreen}
                 fullWidth
                 maxWidth="sm"
@@ -152,8 +127,8 @@ export function AboutAppDialog() {
                         direction="row"
                         spacing={2}
                         sx={{
-                            alignItems: "flex-start",
-                            justifyContent: "space-between",
+                            alignItems: 'flex-start',
+                            justifyContent: 'space-between',
                         }}
                     >
                         <Box>
@@ -166,17 +141,14 @@ export function AboutAppDialog() {
                                 color="text.secondary"
                                 sx={{ mt: 0.5 }}
                             >
-                                Ask grounded questions
-                                across your uploaded PDF
+                                Ask grounded questions across your uploaded PDF
                                 documents.
                             </Typography>
                         </Box>
 
                         <IconButton
                             aria-label="Close"
-                            onClick={() =>
-                                setOpen(false)
-                            }
+                            onClick={() => setOpen(false)}
                         >
                             <CloseRoundedIcon />
                         </IconButton>
@@ -194,105 +166,74 @@ export function AboutAppDialog() {
                 >
                     <Stack spacing={3}>
                         <Box>
-                            <Typography
-                                variant="h6"
-                                gutterBottom
-                            >
+                            <Typography variant="h6" gutterBottom>
                                 What is this application?
                             </Typography>
 
-                            <Typography
-                                variant="body2"
-                                color="text.secondary"
-                            >
-                                AI Knowledge Base is a
-                                document-based AI assistant.
-                                It extracts text from your PDF
-                                files, creates embeddings and
-                                uses semantic search to find
-                                relevant information before
-                                generating an answer.
+                            <Typography variant="body2" color="text.secondary">
+                                AI Knowledge Base is a document-based AI
+                                assistant. It extracts text from your PDF files,
+                                creates embeddings and uses semantic search to
+                                find relevant information before generating an
+                                answer.
                             </Typography>
                         </Box>
 
                         <Divider />
 
                         <Box>
-                            <Typography
-                                variant="h6"
-                                gutterBottom
-                            >
+                            <Typography variant="h6" gutterBottom>
                                 How to use it
                             </Typography>
 
                             <Stack spacing={2}>
-                                {usageSteps.map(
-                                    (
-                                        step,
-                                        index,
-                                    ) => (
-                                        <Stack
-                                            key={
-                                                step.title
-                                            }
-                                            direction="row"
-                                            spacing={1.5}
+                                {usageSteps.map((step, index) => (
+                                    <Stack
+                                        key={step.title}
+                                        direction="row"
+                                        spacing={1.5}
+                                    >
+                                        <Box
+                                            sx={{
+                                                width: 28,
+                                                height: 28,
+                                                display: 'grid',
+                                                placeItems: 'center',
+                                                flexShrink: 0,
+                                                borderRadius: '50%',
+                                                bgcolor: 'primary.main',
+                                                color: 'primary.contrastText',
+                                                fontSize: 13,
+                                                fontWeight: 700,
+                                            }}
                                         >
-                                            <Box
-                                                sx={{
-                                                    width: 28,
-                                                    height: 28,
-                                                    display:
-                                                        'grid',
-                                                    placeItems:
-                                                        'center',
-                                                    flexShrink: 0,
-                                                    borderRadius:
-                                                        '50%',
-                                                    bgcolor:
-                                                        'primary.main',
-                                                    color:
-                                                        'primary.contrastText',
-                                                    fontSize: 13,
-                                                    fontWeight: 700,
-                                                }}
+                                            {index + 1}
+                                        </Box>
+
+                                        <Box>
+                                            <Typography
+                                                variant="body2"
+                                                sx={{ fontWeight: 600 }}
                                             >
-                                                {index +
-                                                    1}
-                                            </Box>
+                                                {step.title}
+                                            </Typography>
 
-                                            <Box>
-                                                <Typography
-                                                    variant="body2"
-                                                    sx={{fontWeight: 600}}
-                                                >
-                                                            {
-                                                                step.title
-                                                            }
-                                                </Typography>
-
-                                                <Typography
-                                                    variant="body2"
-                                                    color="text.secondary"
-                                                >
-                                                    {
-                                                        step.description
-                                                    }
-                                                </Typography>
-                                            </Box>
-                                        </Stack>
-                                    ),
-                                )}
+                                            <Typography
+                                                variant="body2"
+                                                color="text.secondary"
+                                            >
+                                                {step.description}
+                                            </Typography>
+                                        </Box>
+                                    </Stack>
+                                ))}
                             </Stack>
                         </Box>
 
                         <Divider />
 
                         <Box>
-                            <Typography
-                                variant="h6"
-                                gutterBottom
-                            >
+                            <Typography variant="h6" gutterBottom>
                                 Example questions
                             </Typography>
 
@@ -301,97 +242,85 @@ export function AboutAppDialog() {
                                 color="text.secondary"
                                 sx={{ mb: 1.5 }}
                             >
-                                Copy one of these questions
-                                and paste it into the chat.
+                                Copy one of these questions and paste it into
+                                the chat.
                             </Typography>
 
                             <Stack spacing={1}>
-                                {exampleQuestions.map(
-                                    (question) => {
-                                        const isCopied =
-                                            copiedQuestion ===
-                                            question;
+                                {exampleQuestions.map((question) => {
+                                    const isCopied =
+                                        copiedQuestion === question;
 
-                                        return (
-                                            <Paper
-                                                key={
-                                                    question
-                                                }
-                                                variant="outlined"
+                                    return (
+                                        <Paper
+                                            key={question}
+                                            variant="outlined"
+                                            sx={{
+                                                p: 1.25,
+                                            }}
+                                        >
+                                            <Stack
+                                                direction="row"
+                                                spacing={1}
                                                 sx={{
-                                                    p: 1.25,
+                                                    alignItems: 'center',
+                                                    justifyContent:
+                                                        'space-between',
                                                 }}
                                             >
-                                                <Stack
-                                                    direction="row"
-                                                    spacing={1}
+                                                <Typography
+                                                    variant="body2"
                                                     sx={{
-                                                        alignItems: "center",
-                                                        justifyContent: "space-between",
+                                                        overflowWrap:
+                                                            'anywhere',
                                                     }}
                                                 >
-                                                    <Typography
-                                                        variant="body2"
-                                                        sx={{
-                                                            overflowWrap:
-                                                                'anywhere',
-                                                        }}
-                                                    >
-                                                        {
-                                                            question
-                                                        }
-                                                    </Typography>
+                                                    {question}
+                                                </Typography>
 
-                                                    <Tooltip
-                                                        title={
-                                                            isCopied
-                                                                ? 'Copied'
-                                                                : 'Copy question'
+                                                <Tooltip
+                                                    title={
+                                                        isCopied
+                                                            ? 'Copied'
+                                                            : 'Copy question'
+                                                    }
+                                                >
+                                                    <IconButton
+                                                        size="small"
+                                                        aria-label="Copy question"
+                                                        onClick={() =>
+                                                            handleCopy(question)
                                                         }
                                                     >
-                                                        <IconButton
-                                                            size="small"
-                                                            aria-label="Copy question"
-                                                            onClick={() =>
-                                                                handleCopy(
-                                                                    question,
-                                                                )
-                                                            }
-                                                        >
-                                                            {isCopied ? (
-                                                                <CheckRoundedIcon
-                                                                    color="success"
-                                                                    fontSize="small"
-                                                                />
-                                                            ) : (
-                                                                <ContentCopyRoundedIcon
-                                                                    fontSize="small"
-                                                                />
-                                                            )}
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                </Stack>
-                                            </Paper>
-                                        );
-                                    },
-                                )}
+                                                        {isCopied ? (
+                                                            <CheckRoundedIcon
+                                                                color="success"
+                                                                fontSize="small"
+                                                            />
+                                                        ) : (
+                                                            <ContentCopyRoundedIcon fontSize="small" />
+                                                        )}
+                                                    </IconButton>
+                                                </Tooltip>
+                                            </Stack>
+                                        </Paper>
+                                    );
+                                })}
                             </Stack>
                         </Box>
 
                         <Alert severity="info">
-                            The assistant searches across all
-                            uploaded documents with the Ready
-                            status. Use document names in your
-                            question when you want to focus on
-                            a particular file.
+                            The assistant searches across all uploaded documents
+                            with the Ready status. Use document names in your
+                            question when you want to focus on a particular
+                            file.
                         </Alert>
 
                         <Alert severity="warning">
-                            Upload PDFs containing selectable
-                            text. Scanned image-only PDFs
-                            require OCR and are not supported.
-                            Do not upload confidential
-                            documents to this portfolio demo.
+                            Upload PDFs containing selectable text. Scanned
+                            image-only PDFs require OCR and are not supported.
+                            Do not upload confidential documents to this
+                            portfolio demo.
                         </Alert>
                     </Stack>
                 </DialogContent>
@@ -406,9 +335,7 @@ export function AboutAppDialog() {
                 >
                     <Button
                         variant="contained"
-                        onClick={() =>
-                            setOpen(false)
-                        }
+                        onClick={() => setOpen(false)}
                         sx={{
                             width: {
                                 xs: '100%',

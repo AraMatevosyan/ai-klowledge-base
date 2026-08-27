@@ -15,9 +15,7 @@ import { ChatService } from './chat.service';
 import { AskQuestionDto } from './dto/ask-question.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
-import {
-    DailyAiBudgetExceededException,
-} from '../ai/daily-ai-budget-exceeded.exception';
+import { DailyAiBudgetExceededException } from '../ai/daily-ai-budget-exceeded.exception';
 
 type AuthenticatedUser = {
     id: string;
@@ -95,8 +93,7 @@ export class ChatController {
                 },
             );
 
-            if (!response.destroyed &&
-                !response.writableEnded) {
+            if (!response.destroyed && !response.writableEnded) {
                 response.write(
                     `${JSON.stringify({
                         type: 'complete',
@@ -105,10 +102,7 @@ export class ChatController {
                 );
             }
         } catch (error) {
-            if (
-                error instanceof
-                DailyAiBudgetExceededException
-            ) {
+            if (error instanceof DailyAiBudgetExceededException) {
                 this.logger.warn(
                     `Daily AI budget exceeded for user ${user.id}`,
                 );
@@ -116,22 +110,13 @@ export class ChatController {
                 this.logger.error(
                     'Failed to stream an answer',
 
-                    error instanceof Error
-                        ? error.stack
-                        : undefined,
+                    error instanceof Error ? error.stack : undefined,
                 );
             }
 
-            if (
-                !response.destroyed &&
-                !response.writableEnded
-            ) {
+            if (!response.destroyed && !response.writableEnded) {
                 response.write(
-                    `${JSON.stringify(
-                        this.createStreamErrorEvent(
-                            error,
-                        ),
-                    )}\n`,
+                    `${JSON.stringify(this.createStreamErrorEvent(error))}\n`,
                 );
             }
         } finally {
@@ -155,15 +140,9 @@ export class ChatController {
         return this.chatService.clearMessages(user.id);
     }
 
-    private createStreamErrorEvent(
-        error: unknown,
-    ): StreamErrorEvent {
-        if (
-            error instanceof
-            DailyAiBudgetExceededException
-        ) {
-            const body =
-                error.getBody();
+    private createStreamErrorEvent(error: unknown): StreamErrorEvent {
+        if (error instanceof DailyAiBudgetExceededException) {
+            const body = error.getBody();
 
             return {
                 type: 'error',
@@ -175,8 +154,7 @@ export class ChatController {
 
         return {
             type: 'error',
-            message:
-                'Unable to generate an answer. Please try again.',
+            message: 'Unable to generate an answer. Please try again.',
         };
     }
 }

@@ -5,7 +5,6 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
-import { DEFAULT_AUTH_TOKEN_TTL_SECONDS } from './auth.constants';
 
 @Module({
     imports: [
@@ -16,18 +15,14 @@ import { DEFAULT_AUTH_TOKEN_TTL_SECONDS } from './auth.constants';
             inject: [ConfigService],
 
             useFactory: (configService: ConfigService) => ({
-                secret:
-                    configService.getOrThrow<string>(
-                        'JWT_SECRET',
-                    ),
+                secret: configService.getOrThrow<string>('JWT_SECRET'),
 
                 signOptions: {
-                    expiresIn:
-                        configService.getOrThrow<number>(
-                            'JWT_EXPIRES_IN_SECONDS',
-                        ),
+                    expiresIn: configService.getOrThrow<number>(
+                        'JWT_EXPIRES_IN_SECONDS',
+                    ),
                 },
-            })
+            }),
         }),
     ],
 

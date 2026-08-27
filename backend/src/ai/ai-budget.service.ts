@@ -3,70 +3,46 @@ import {
     InternalServerErrorException,
     Logger,
 } from '@nestjs/common';
-import {
-    ConfigService,
-} from '@nestjs/config';
+import { ConfigService } from '@nestjs/config';
 
-import {
-    PrismaService,
-} from '../prisma/prisma.service';
-import {
-    AiBudgetReservation,
-    AiTokenUsage,
-} from './ai-budget.types';
-import {
-    DailyAiBudgetExceededException,
-} from './daily-ai-budget-exceeded.exception';
+import { PrismaService } from '../prisma/prisma.service';
+import { AiBudgetReservation, AiTokenUsage } from './ai-budget.types';
+import { DailyAiBudgetExceededException } from './daily-ai-budget-exceeded.exception';
 
-const NANO_USD_PER_USD =
-    1_000_000_000;
+const NANO_USD_PER_USD = 1_000_000_000;
 
-const TOKENS_PER_MILLION =
-    1_000_000;
+const TOKENS_PER_MILLION = 1_000_000;
 
-const CHAT_INPUT_TOKEN_BUFFER =
-    1_024;
+const CHAT_INPUT_TOKEN_BUFFER = 1_024;
 
 @Injectable()
 export class AiBudgetService {
-    private readonly logger =
-        new Logger(AiBudgetService.name);
+    private readonly logger = new Logger(AiBudgetService.name);
 
-    private readonly dailyBudgetNanoUsd:
-        bigint;
+    private readonly dailyBudgetNanoUsd: bigint;
 
-    private readonly chatInputNanoUsdPerToken:
-        number;
+    private readonly chatInputNanoUsdPerToken: number;
 
-    private readonly chatCachedInputNanoUsdPerToken:
-        number;
+    private readonly chatCachedInputNanoUsdPerToken: number;
 
-    private readonly chatOutputNanoUsdPerToken:
-        number;
+    private readonly chatOutputNanoUsdPerToken: number;
 
-    private readonly embeddingNanoUsdPerToken:
-        number;
+    private readonly embeddingNanoUsdPerToken: number;
 
     constructor(
-        private readonly prisma:
-        PrismaService,
+        private readonly prisma: PrismaService,
 
-        configService:
-        ConfigService,
+        configService: ConfigService,
     ) {
-        this.dailyBudgetNanoUsd =
-            this.usdToNanoUsd(
-                configService.getOrThrow<number>(
-                    'DAILY_AI_BUDGET_USD',
-                ),
-            );
+        this.dailyBudgetNanoUsd = this.usdToNanoUsd(
+            configService.getOrThrow<number>('DAILY_AI_BUDGET_USD'),
+        );
 
-        this.chatInputNanoUsdPerToken =
-            this.pricePerMillionToNanoUsdPerToken(
-                configService.getOrThrow<number>(
-                    'OPENAI_CHAT_INPUT_USD_PER_MILLION_TOKENS',
-                ),
-            );
+        this.chatInputNanoUsdPerToken = this.pricePerMillionToNanoUsdPerToken(
+            configService.getOrThrow<number>(
+                'OPENAI_CHAT_INPUT_USD_PER_MILLION_TOKENS',
+            ),
+        );
 
         this.chatCachedInputNanoUsdPerToken =
             this.pricePerMillionToNanoUsdPerToken(
@@ -75,54 +51,35 @@ export class AiBudgetService {
                 ),
             );
 
-        this.chatOutputNanoUsdPerToken =
-            this.pricePerMillionToNanoUsdPerToken(
-                configService.getOrThrow<number>(
-                    'OPENAI_CHAT_OUTPUT_USD_PER_MILLION_TOKENS',
-                ),
-            );
+        this.chatOutputNanoUsdPerToken = this.pricePerMillionToNanoUsdPerToken(
+            configService.getOrThrow<number>(
+                'OPENAI_CHAT_OUTPUT_USD_PER_MILLION_TOKENS',
+            ),
+        );
 
-        this.embeddingNanoUsdPerToken =
-            this.pricePerMillionToNanoUsdPerToken(
-                configService.getOrThrow<number>(
-                    'OPENAI_EMBEDDING_USD_PER_MILLION_TOKENS',
-                ),
-            );
+        this.embeddingNanoUsdPerToken = this.pricePerMillionToNanoUsdPerToken(
+            configService.getOrThrow<number>(
+                'OPENAI_EMBEDDING_USD_PER_MILLION_TOKENS',
+            ),
+        );
     }
 
     reserveForEmbedding(
         userId: string,
         input: string | string[],
     ): Promise<AiBudgetReservation> {
-        const inputs =
-            Array.isArray(input)
-                ? input
-                : [input];
+        const inputs = Array.isArray(input) ? input : [input];
 
-        const maximumInputTokens =
-            inputs.reduce(
-                (total, value) =>
-                    total +
-                    Buffer.byteLength(
-                        value,
-                        'utf8',
-                    ),
-                0,
-            );
-
-        const amountNanoUsd =
-            BigInt(
-                Math.ceil(
-                    maximumInputTokens *
-                    this
-                        .embeddingNanoUsdPerToken,
-                ),
-            );
-
-        return this.reserve(
-            userId,
-            amountNanoUsd,
+        const maximumInputTokens = inputs.reduce(
+            (total, value) => total + Buffer.byteLength(value, 'utf8'),
+            0,
         );
+
+        const amountNanoUsd = BigInt(
+            Math.ceil(maximumInputTokens * this.embeddingNanoUsdPerToken),
+        );
+
+        return this.reserve(userId, amountNanoUsd);
     }
 
     reserveForChat(
@@ -132,53 +89,34 @@ export class AiBudgetService {
         maxOutputTokens: number,
     ): Promise<AiBudgetReservation> {
         const maximumInputTokens =
-            Buffer.byteLength(
-                `${instructions}\n${input}`,
-                'utf8',
-            ) +
+            Buffer.byteLength(`${instructions}\n${input}`, 'utf8') +
             CHAT_INPUT_TOKEN_BUFFER;
 
-        const amountNanoUsd =
-            BigInt(
-                Math.ceil(
-                    maximumInputTokens *
-                    this
-                        .chatInputNanoUsdPerToken +
-                    maxOutputTokens *
-                    this
-                        .chatOutputNanoUsdPerToken,
-                ),
-            );
-
-        return this.reserve(
-            userId,
-            amountNanoUsd,
+        const amountNanoUsd = BigInt(
+            Math.ceil(
+                maximumInputTokens * this.chatInputNanoUsdPerToken +
+                    maxOutputTokens * this.chatOutputNanoUsdPerToken,
+            ),
         );
+
+        return this.reserve(userId, amountNanoUsd);
     }
 
     async settle(
         reservation: AiBudgetReservation,
         usage: AiTokenUsage,
     ): Promise<void> {
-        const normalizedUsage =
-            this.normalizeUsage(usage);
+        const normalizedUsage = this.normalizeUsage(usage);
 
-        const actualCostNanoUsd =
-            this.calculateCostNanoUsd(
-                normalizedUsage,
-            );
+        const actualCostNanoUsd = this.calculateCostNanoUsd(normalizedUsage);
 
-        if (
-            actualCostNanoUsd >
-            reservation.amountNanoUsd
-        ) {
+        if (actualCostNanoUsd > reservation.amountNanoUsd) {
             this.logger.warn(
                 `Actual AI cost exceeded reservation for user ${reservation.userId}`,
             );
         }
 
-        const updatedRows =
-            await this.prisma.$executeRaw`
+        const updatedRows = await this.prisma.$executeRaw`
                 UPDATE "ai_daily_usage"
                 SET
                     "reserved_nano_usd" =
@@ -226,11 +164,8 @@ export class AiBudgetService {
         }
     }
 
-    async release(
-        reservation: AiBudgetReservation,
-    ): Promise<void> {
-        const updatedRows =
-            await this.prisma.$executeRaw`
+    async release(reservation: AiBudgetReservation): Promise<void> {
+        const updatedRows = await this.prisma.$executeRaw`
                 UPDATE "ai_daily_usage"
                 SET
                     "reserved_nano_usd" =
@@ -262,27 +197,19 @@ export class AiBudgetService {
         userId: string,
         amountNanoUsd: bigint,
     ): Promise<AiBudgetReservation> {
-        const usageDate =
-            this.getCurrentUtcDate();
+        const usageDate = this.getCurrentUtcDate();
 
-        if (
-            amountNanoUsd >
-            this.dailyBudgetNanoUsd
-        ) {
+        if (amountNanoUsd > this.dailyBudgetNanoUsd) {
             throw new DailyAiBudgetExceededException(
-                this.getNextUtcDate(
-                    usageDate,
-                ),
+                this.getNextUtcDate(usageDate),
             );
         }
 
-        const rows =
-            await this.prisma.$queryRaw<
-                Array<{
-                    reservedNanoUsd:
-                        bigint;
-                }>
-            >`
+        const rows = await this.prisma.$queryRaw<
+            Array<{
+                reservedNanoUsd: bigint;
+            }>
+        >`
                 INSERT INTO "ai_daily_usage" (
                     "user_id",
                     "usage_date",
@@ -334,9 +261,7 @@ export class AiBudgetService {
 
         if (rows.length === 0) {
             throw new DailyAiBudgetExceededException(
-                this.getNextUtcDate(
-                    usageDate,
-                ),
+                this.getNextUtcDate(usageDate),
             );
         }
 
@@ -347,111 +272,56 @@ export class AiBudgetService {
         };
     }
 
-    private calculateCostNanoUsd(
-        usage: Required<AiTokenUsage>,
-    ): bigint {
-        const regularInputTokens =
-            Math.max(
-                usage.chatInputTokens -
-                usage
-                    .chatCachedInputTokens,
-                0,
-            );
+    private calculateCostNanoUsd(usage: Required<AiTokenUsage>): bigint {
+        const regularInputTokens = Math.max(
+            usage.chatInputTokens - usage.chatCachedInputTokens,
+            0,
+        );
 
         const cost =
-            regularInputTokens *
-            this
-                .chatInputNanoUsdPerToken +
-            usage.chatCachedInputTokens *
-            this
-                .chatCachedInputNanoUsdPerToken +
-            usage.chatOutputTokens *
-            this
-                .chatOutputNanoUsdPerToken +
-            usage.embeddingTokens *
-            this
-                .embeddingNanoUsdPerToken;
+            regularInputTokens * this.chatInputNanoUsdPerToken +
+            usage.chatCachedInputTokens * this.chatCachedInputNanoUsdPerToken +
+            usage.chatOutputTokens * this.chatOutputNanoUsdPerToken +
+            usage.embeddingTokens * this.embeddingNanoUsdPerToken;
 
-        return BigInt(
-            Math.ceil(cost),
-        );
+        return BigInt(Math.ceil(cost));
     }
 
-    private normalizeUsage(
-        usage: AiTokenUsage,
-    ): Required<AiTokenUsage> {
+    private normalizeUsage(usage: AiTokenUsage): Required<AiTokenUsage> {
         return {
-            chatInputTokens:
-                this.normalizeTokenCount(
-                    usage.chatInputTokens,
-                ),
+            chatInputTokens: this.normalizeTokenCount(usage.chatInputTokens),
 
-            chatCachedInputTokens:
-                this.normalizeTokenCount(
-                    usage
-                        .chatCachedInputTokens,
-                ),
+            chatCachedInputTokens: this.normalizeTokenCount(
+                usage.chatCachedInputTokens,
+            ),
 
-            chatOutputTokens:
-                this.normalizeTokenCount(
-                    usage.chatOutputTokens,
-                ),
+            chatOutputTokens: this.normalizeTokenCount(usage.chatOutputTokens),
 
-            embeddingTokens:
-                this.normalizeTokenCount(
-                    usage.embeddingTokens,
-                ),
+            embeddingTokens: this.normalizeTokenCount(usage.embeddingTokens),
         };
     }
 
-    private normalizeTokenCount(
-        value: number | undefined,
-    ): number {
-        return Math.max(
-            0,
-            Math.trunc(value ?? 0),
-        );
+    private normalizeTokenCount(value: number | undefined): number {
+        return Math.max(0, Math.trunc(value ?? 0));
     }
 
-    private usdToNanoUsd(
-        value: number,
-    ): bigint {
-        return BigInt(
-            Math.round(
-                value *
-                NANO_USD_PER_USD,
-            ),
-        );
+    private usdToNanoUsd(value: number): bigint {
+        return BigInt(Math.round(value * NANO_USD_PER_USD));
     }
 
-    private pricePerMillionToNanoUsdPerToken(
-        value: number,
-    ): number {
-        return (
-            value *
-            NANO_USD_PER_USD /
-            TOKENS_PER_MILLION
-        );
+    private pricePerMillionToNanoUsdPerToken(value: number): number {
+        return (value * NANO_USD_PER_USD) / TOKENS_PER_MILLION;
     }
 
     private getCurrentUtcDate(): Date {
         const now = new Date();
 
         return new Date(
-            Date.UTC(
-                now.getUTCFullYear(),
-                now.getUTCMonth(),
-                now.getUTCDate(),
-            ),
+            Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
         );
     }
 
-    private getNextUtcDate(
-        usageDate: Date,
-    ): Date {
-        return new Date(
-            usageDate.getTime() +
-            24 * 60 * 60 * 1000,
-        );
+    private getNextUtcDate(usageDate: Date): Date {
+        return new Date(usageDate.getTime() + 24 * 60 * 60 * 1000);
     }
 }

@@ -7,14 +7,9 @@ import type { ConfigService } from '@nestjs/config';
 import type { AiBudgetService } from './ai-budget.service';
 import type { OpenAiClientService } from './openai-client.service';
 import { DailyAiBudgetExceededException } from './daily-ai-budget-exceeded.exception';
-import {
-    EMBEDDING_DIMENSIONS,
-    EmbeddingsService,
-} from './embeddings.service';
+import { EMBEDDING_DIMENSIONS, EmbeddingsService } from './embeddings.service';
 
-const createEmbedding = (
-    value: number,
-): number[] =>
+const createEmbedding = (value: number): number[] =>
     Array.from(
         {
             length: EMBEDDING_DIMENSIONS,
@@ -25,9 +20,7 @@ const createEmbedding = (
 const reservation = {
     userId: 'user-1',
 
-    usageDate: new Date(
-        '2026-08-27T00:00:00.000Z',
-    ),
+    usageDate: new Date('2026-08-27T00:00:00.000Z'),
 
     amountNanoUsd: 1_000n,
 };
@@ -35,16 +28,14 @@ const reservation = {
 describe('EmbeddingsService', () => {
     let service: EmbeddingsService;
 
-    const embeddingsCreate =
-        jest.fn();
+    const embeddingsCreate = jest.fn();
 
     const openAiClient = {
         getClient: jest.fn(),
     };
 
     const aiBudgetService = {
-        reserveForEmbedding:
-            jest.fn(),
+        reserveForEmbedding: jest.fn(),
 
         settle: jest.fn(),
 
@@ -60,51 +51,29 @@ describe('EmbeddingsService', () => {
     beforeEach(() => {
         jest.clearAllMocks();
 
-        jest.spyOn(
-            Logger.prototype,
-            'error',
-        ).mockImplementation(
+        jest.spyOn(Logger.prototype, 'error').mockImplementation(
             () => undefined,
         );
 
-        openAiClient.getClient.mockReturnValue(
-            openAiClientInstance,
-        );
+        openAiClient.getClient.mockReturnValue(openAiClientInstance);
 
-        aiBudgetService
-            .reserveForEmbedding
-            .mockResolvedValue(
-                reservation,
-            );
+        aiBudgetService.reserveForEmbedding.mockResolvedValue(reservation);
 
-        aiBudgetService
-            .settle
-            .mockResolvedValue(
-                undefined,
-            );
+        aiBudgetService.settle.mockResolvedValue(undefined);
 
-        aiBudgetService
-            .release
-            .mockResolvedValue(
-                undefined,
-            );
+        aiBudgetService.release.mockResolvedValue(undefined);
 
         const configService = {
-            get: jest
-                .fn()
-                .mockReturnValue(
-                    undefined,
-                ),
+            get: jest.fn().mockReturnValue(undefined),
         };
 
-        service =
-            new EmbeddingsService(
-                configService as unknown as ConfigService,
+        service = new EmbeddingsService(
+            configService as unknown as ConfigService,
 
-                openAiClient as unknown as OpenAiClientService,
+            openAiClient as unknown as OpenAiClientService,
 
-                aiBudgetService as unknown as AiBudgetService,
-            );
+            aiBudgetService as unknown as AiBudgetService,
+        );
     });
 
     afterEach(() => {
@@ -112,72 +81,41 @@ describe('EmbeddingsService', () => {
     });
 
     it('returns an empty array without calling OpenAI or reserving budget', async () => {
-        await expect(
-            service.createMany(
-                'user-1',
-                [],
-            ),
-        ).resolves.toEqual([]);
+        await expect(service.createMany('user-1', [])).resolves.toEqual([]);
 
-        expect(
-            openAiClient.getClient,
-        ).not.toHaveBeenCalled();
+        expect(openAiClient.getClient).not.toHaveBeenCalled();
 
-        expect(
-            aiBudgetService
-                .reserveForEmbedding,
-        ).not.toHaveBeenCalled();
+        expect(aiBudgetService.reserveForEmbedding).not.toHaveBeenCalled();
 
-        expect(
-            embeddingsCreate,
-        ).not.toHaveBeenCalled();
+        expect(embeddingsCreate).not.toHaveBeenCalled();
     });
 
     it('rejects empty embedding inputs before reserving budget', async () => {
         await expect(
-            service.createMany(
-                'user-1',
-                [
-                    'valid input',
-                    '   ',
-                ],
-            ),
-        ).rejects.toBeInstanceOf(
-            UnprocessableEntityException,
-        );
+            service.createMany('user-1', ['valid input', '   ']),
+        ).rejects.toBeInstanceOf(UnprocessableEntityException);
 
-        expect(
-            openAiClient.getClient,
-        ).not.toHaveBeenCalled();
+        expect(openAiClient.getClient).not.toHaveBeenCalled();
 
-        expect(
-            aiBudgetService
-                .reserveForEmbedding,
-        ).not.toHaveBeenCalled();
+        expect(aiBudgetService.reserveForEmbedding).not.toHaveBeenCalled();
 
-        expect(
-            embeddingsCreate,
-        ).not.toHaveBeenCalled();
+        expect(embeddingsCreate).not.toHaveBeenCalled();
     });
 
     it('reserves budget and settles actual embedding token usage', async () => {
-        const firstEmbedding =
-            createEmbedding(1);
+        const firstEmbedding = createEmbedding(1);
 
-        const secondEmbedding =
-            createEmbedding(2);
+        const secondEmbedding = createEmbedding(2);
 
         embeddingsCreate.mockResolvedValue({
             data: [
                 {
                     index: 1,
-                    embedding:
-                    secondEmbedding,
+                    embedding: secondEmbedding,
                 },
                 {
                     index: 0,
-                    embedding:
-                    firstEmbedding,
+                    embedding: firstEmbedding,
                 },
             ],
 
@@ -187,57 +125,32 @@ describe('EmbeddingsService', () => {
             },
         });
 
-        const inputs = [
-            'first input',
-            'second input',
-        ];
+        const inputs = ['first input', 'second input'];
 
-        const result =
-            await service.createMany(
-                'user-1',
-                inputs,
-            );
+        const result = await service.createMany('user-1', inputs);
 
-        expect(result).toEqual([
-            firstEmbedding,
-            secondEmbedding,
-        ]);
+        expect(result).toEqual([firstEmbedding, secondEmbedding]);
 
-        expect(
-            aiBudgetService
-                .reserveForEmbedding,
-        ).toHaveBeenCalledWith(
+        expect(aiBudgetService.reserveForEmbedding).toHaveBeenCalledWith(
             'user-1',
             inputs,
         );
 
-        expect(
-            embeddingsCreate,
-        ).toHaveBeenCalledWith({
-            model:
-                'text-embedding-3-small',
+        expect(embeddingsCreate).toHaveBeenCalledWith({
+            model: 'text-embedding-3-small',
 
             input: inputs,
 
-            dimensions:
-            EMBEDDING_DIMENSIONS,
+            dimensions: EMBEDDING_DIMENSIONS,
 
-            encoding_format:
-                'float',
+            encoding_format: 'float',
         });
 
-        expect(
-            aiBudgetService.settle,
-        ).toHaveBeenCalledWith(
-            reservation,
-            {
-                embeddingTokens: 25,
-            },
-        );
+        expect(aiBudgetService.settle).toHaveBeenCalledWith(reservation, {
+            embeddingTokens: 25,
+        });
 
-        expect(
-            aiBudgetService.release,
-        ).not.toHaveBeenCalled();
+        expect(aiBudgetService.release).not.toHaveBeenCalled();
     });
 
     it('reserves and settles each OpenAI batch separately', async () => {
@@ -245,8 +158,7 @@ describe('EmbeddingsService', () => {
             {
                 length: 101,
             },
-            (_, index) =>
-                `input-${index + 1}`,
+            (_, index) => `input-${index + 1}`,
         );
 
         const secondReservation = {
@@ -254,87 +166,48 @@ describe('EmbeddingsService', () => {
             amountNanoUsd: 2_000n,
         };
 
-        aiBudgetService
-            .reserveForEmbedding
-            .mockResolvedValueOnce(
-                reservation,
-            )
-            .mockResolvedValueOnce(
-                secondReservation,
-            );
+        aiBudgetService.reserveForEmbedding
+            .mockResolvedValueOnce(reservation)
+            .mockResolvedValueOnce(secondReservation);
 
         embeddingsCreate.mockImplementation(
-            async ({
-                       input,
-                   }: {
-                input: string[];
-            }) => ({
-                data: input.map(
-                    (_, index) => ({
-                        index,
-                        embedding:
-                            createEmbedding(
-                                index + 1,
-                            ),
-                    }),
-                ),
+            async ({ input }: { input: string[] }) => ({
+                data: input.map((_, index) => ({
+                    index,
+                    embedding: createEmbedding(index + 1),
+                })),
 
                 usage: {
-                    prompt_tokens:
-                    input.length,
+                    prompt_tokens: input.length,
 
-                    total_tokens:
-                    input.length,
+                    total_tokens: input.length,
                 },
             }),
         );
 
-        const result =
-            await service.createMany(
-                'user-1',
-                inputs,
-            );
+        const result = await service.createMany('user-1', inputs);
 
-        expect(result).toHaveLength(
-            101,
-        );
+        expect(result).toHaveLength(101);
 
-        expect(
-            aiBudgetService
-                .reserveForEmbedding,
-        ).toHaveBeenCalledTimes(2);
+        expect(aiBudgetService.reserveForEmbedding).toHaveBeenCalledTimes(2);
 
-        expect(
-            aiBudgetService
-                .reserveForEmbedding,
-        ).toHaveBeenNthCalledWith(
+        expect(aiBudgetService.reserveForEmbedding).toHaveBeenNthCalledWith(
             1,
             'user-1',
             inputs.slice(0, 100),
         );
 
-        expect(
-            aiBudgetService
-                .reserveForEmbedding,
-        ).toHaveBeenNthCalledWith(
+        expect(aiBudgetService.reserveForEmbedding).toHaveBeenNthCalledWith(
             2,
             'user-1',
             inputs.slice(100),
         );
 
-        expect(
-            aiBudgetService.settle,
-        ).toHaveBeenNthCalledWith(
-            1,
-            reservation,
-            {
-                embeddingTokens: 100,
-            },
-        );
+        expect(aiBudgetService.settle).toHaveBeenNthCalledWith(1, reservation, {
+            embeddingTokens: 100,
+        });
 
-        expect(
-            aiBudgetService.settle,
-        ).toHaveBeenNthCalledWith(
+        expect(aiBudgetService.settle).toHaveBeenNthCalledWith(
             2,
             secondReservation,
             {
@@ -344,109 +217,54 @@ describe('EmbeddingsService', () => {
     });
 
     it('preserves the daily budget exception without calling OpenAI', async () => {
-        const budgetError =
-            new DailyAiBudgetExceededException(
-                new Date(
-                    '2026-08-28T00:00:00.000Z',
-                ),
-            );
+        const budgetError = new DailyAiBudgetExceededException(
+            new Date('2026-08-28T00:00:00.000Z'),
+        );
 
-        aiBudgetService
-            .reserveForEmbedding
-            .mockRejectedValue(
-                budgetError,
-            );
+        aiBudgetService.reserveForEmbedding.mockRejectedValue(budgetError);
 
-        await expect(
-            service.createMany(
-                'user-1',
-                ['test input'],
-            ),
-        ).rejects.toBe(
+        await expect(service.createMany('user-1', ['test input'])).rejects.toBe(
             budgetError,
         );
 
-        expect(
-            embeddingsCreate,
-        ).not.toHaveBeenCalled();
+        expect(embeddingsCreate).not.toHaveBeenCalled();
 
-        expect(
-            aiBudgetService.settle,
-        ).not.toHaveBeenCalled();
+        expect(aiBudgetService.settle).not.toHaveBeenCalled();
 
-        expect(
-            aiBudgetService.release,
-        ).not.toHaveBeenCalled();
+        expect(aiBudgetService.release).not.toHaveBeenCalled();
     });
 
     it('releases the reservation when the OpenAI request fails', async () => {
-        embeddingsCreate.mockRejectedValue(
-            new Error(
-                'OpenAI is unavailable',
-            ),
-        );
+        embeddingsCreate.mockRejectedValue(new Error('OpenAI is unavailable'));
 
         await expect(
-            service.createMany(
-                'user-1',
-                ['test input'],
-            ),
-        ).rejects.toBeInstanceOf(
-            BadGatewayException,
-        );
+            service.createMany('user-1', ['test input']),
+        ).rejects.toBeInstanceOf(BadGatewayException);
 
-        expect(
-            aiBudgetService
-                .reserveForEmbedding,
-        ).toHaveBeenCalledWith(
+        expect(aiBudgetService.reserveForEmbedding).toHaveBeenCalledWith(
             'user-1',
             ['test input'],
         );
 
-        expect(
-            aiBudgetService.release,
-        ).toHaveBeenCalledWith(
-            reservation,
-        );
+        expect(aiBudgetService.release).toHaveBeenCalledWith(reservation);
 
-        expect(
-            aiBudgetService.settle,
-        ).not.toHaveBeenCalled();
+        expect(aiBudgetService.settle).not.toHaveBeenCalled();
     });
 
     it('does not replace the OpenAI error when releasing the reservation fails', async () => {
-        embeddingsCreate.mockRejectedValue(
-            new Error(
-                'OpenAI is unavailable',
-            ),
-        );
+        embeddingsCreate.mockRejectedValue(new Error('OpenAI is unavailable'));
 
-        aiBudgetService
-            .release
-            .mockRejectedValue(
-                new Error(
-                    'Database is unavailable',
-                ),
-            );
+        aiBudgetService.release.mockRejectedValue(
+            new Error('Database is unavailable'),
+        );
 
         await expect(
-            service.createMany(
-                'user-1',
-                ['test input'],
-            ),
-        ).rejects.toBeInstanceOf(
-            BadGatewayException,
-        );
+            service.createMany('user-1', ['test input']),
+        ).rejects.toBeInstanceOf(BadGatewayException);
 
-        expect(
-            aiBudgetService.release,
-        ).toHaveBeenCalledWith(
-            reservation,
-        );
+        expect(aiBudgetService.release).toHaveBeenCalledWith(reservation);
 
-        expect(
-            aiBudgetService.settle,
-        ).not.toHaveBeenCalled();
+        expect(aiBudgetService.settle).not.toHaveBeenCalled();
     });
 
     it('settles actual usage when OpenAI returns an invalid response', async () => {
@@ -460,30 +278,18 @@ describe('EmbeddingsService', () => {
         });
 
         await expect(
-            service.createMany(
-                'user-1',
-                ['test input'],
-            ),
-        ).rejects.toBeInstanceOf(
-            BadGatewayException,
-        );
+            service.createMany('user-1', ['test input']),
+        ).rejects.toBeInstanceOf(BadGatewayException);
 
         /*
          * OpenAI processed the request and charged
          * for it, so the actual usage must still
          * be recorded even if its response is invalid.
          */
-        expect(
-            aiBudgetService.settle,
-        ).toHaveBeenCalledWith(
-            reservation,
-            {
-                embeddingTokens: 10,
-            },
-        );
+        expect(aiBudgetService.settle).toHaveBeenCalledWith(reservation, {
+            embeddingTokens: 10,
+        });
 
-        expect(
-            aiBudgetService.release,
-        ).not.toHaveBeenCalled();
+        expect(aiBudgetService.release).not.toHaveBeenCalled();
     });
 });

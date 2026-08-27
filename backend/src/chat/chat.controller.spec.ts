@@ -1,9 +1,5 @@
-import {
-    Logger,
-} from '@nestjs/common';
-import type {
-    Response,
-} from 'express';
+import { Logger } from '@nestjs/common';
+import type { Response } from 'express';
 import { DailyAiBudgetExceededException } from '../ai/daily-ai-budget-exceeded.exception';
 import { ChatController } from './chat.controller';
 import type { ChatService } from './chat.service';
@@ -14,8 +10,7 @@ const user = {
 };
 
 const dto = {
-    question:
-        'What does Ara do?',
+    question: 'What does Ara do?',
 };
 
 function createResponseMock() {
@@ -59,24 +54,15 @@ describe('ChatController daily AI budget', () => {
     beforeEach(() => {
         jest.clearAllMocks();
 
-        jest.spyOn(
-            Logger.prototype,
-            'warn',
-        ).mockImplementation(
+        jest.spyOn(Logger.prototype, 'warn').mockImplementation(
             () => undefined,
         );
 
-        jest.spyOn(
-            Logger.prototype,
-            'error',
-        ).mockImplementation(
+        jest.spyOn(Logger.prototype, 'error').mockImplementation(
             () => undefined,
         );
 
-        controller =
-            new ChatController(
-                chatService as unknown as ChatService,
-            );
+        controller = new ChatController(chatService as unknown as ChatService);
     });
 
     afterEach(() => {
@@ -84,105 +70,56 @@ describe('ChatController daily AI budget', () => {
     });
 
     it('preserves the budget exception for the regular endpoint', async () => {
-        const budgetError =
-            new DailyAiBudgetExceededException(
-                new Date(
-                    '2026-08-28T00:00:00.000Z',
-                ),
-            );
-
-        chatService
-            .askQuestion
-            .mockRejectedValue(
-                budgetError,
-            );
-
-        await expect(
-            controller.ask(
-                user,
-                dto,
-            ),
-        ).rejects.toBe(
-            budgetError,
+        const budgetError = new DailyAiBudgetExceededException(
+            new Date('2026-08-28T00:00:00.000Z'),
         );
 
-        expect(
-            chatService.askQuestion,
-        ).toHaveBeenCalledWith(
+        chatService.askQuestion.mockRejectedValue(budgetError);
+
+        await expect(controller.ask(user, dto)).rejects.toBe(budgetError);
+
+        expect(chatService.askQuestion).toHaveBeenCalledWith(
             'user-1',
             dto.question,
         );
     });
 
     it('writes the budget error as an NDJSON stream event', async () => {
-        const budgetError =
-            new DailyAiBudgetExceededException(
-                new Date(
-                    '2026-08-28T00:00:00.000Z',
-                ),
-            );
-
-        chatService
-            .askQuestion
-            .mockRejectedValue(
-                budgetError,
-            );
-
-        const responseMock =
-            createResponseMock();
-
-        await controller.askStream(
-            user,
-            dto,
-            responseMock.response,
+        const budgetError = new DailyAiBudgetExceededException(
+            new Date('2026-08-28T00:00:00.000Z'),
         );
 
-        expect(
-            responseMock.status,
-        ).toHaveBeenCalledWith(
-            200,
-        );
+        chatService.askQuestion.mockRejectedValue(budgetError);
 
-        expect(
-            responseMock.setHeader,
-        ).toHaveBeenCalledWith(
+        const responseMock = createResponseMock();
+
+        await controller.askStream(user, dto, responseMock.response);
+
+        expect(responseMock.status).toHaveBeenCalledWith(200);
+
+        expect(responseMock.setHeader).toHaveBeenCalledWith(
             'Content-Type',
             'application/x-ndjson; charset=utf-8',
         );
 
-        expect(
-            responseMock.flushHeaders,
-        ).toHaveBeenCalledTimes(1);
+        expect(responseMock.flushHeaders).toHaveBeenCalledTimes(1);
 
-        expect(
-            responseMock.write,
-        ).toHaveBeenCalledTimes(1);
+        expect(responseMock.write).toHaveBeenCalledTimes(1);
 
-        const writtenLine =
-            responseMock.write.mock
-                .calls[0][0] as string;
+        const writtenLine = responseMock.write.mock.calls[0][0] as string;
 
-        expect(
-            writtenLine.endsWith('\n'),
-        ).toBe(true);
+        expect(writtenLine.endsWith('\n')).toBe(true);
 
-        expect(
-            JSON.parse(writtenLine),
-        ).toEqual({
+        expect(JSON.parse(writtenLine)).toEqual({
             type: 'error',
 
-            code:
-                'DAILY_AI_BUDGET_EXCEEDED',
+            code: 'DAILY_AI_BUDGET_EXCEEDED',
 
-            message:
-                expect.any(String),
+            message: expect.any(String),
 
-            resetAt:
-                '2026-08-28T00:00:00.000Z',
+            resetAt: '2026-08-28T00:00:00.000Z',
         });
 
-        expect(
-            responseMock.end,
-        ).toHaveBeenCalledTimes(1);
+        expect(responseMock.end).toHaveBeenCalledTimes(1);
     });
 });

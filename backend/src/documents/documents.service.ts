@@ -173,11 +173,7 @@ export class DocumentsService {
             );
         }
 
-        return this.processDocument(
-            userId,
-            documentId,
-            file.buffer,
-        );
+        return this.processDocument(userId, documentId, file.buffer);
     }
 
     async retryProcessing(userId: string, documentId: string) {
@@ -258,18 +254,14 @@ export class DocumentsService {
             );
         }
 
-        return this.processDocument(
-            userId,
-            documentId,
-            fileBuffer,
-        );
+        return this.processDocument(userId, documentId, fileBuffer);
     }
 
     private async processDocument(
         userId: string,
         documentId: string,
         fileBuffer: Buffer,
-        ) {
+    ) {
         try {
             const extractedPdf = await this.pdfProcessor.extract(fileBuffer);
 

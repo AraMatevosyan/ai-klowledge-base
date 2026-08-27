@@ -2,18 +2,16 @@ import { Module } from '@nestjs/common';
 import { OpenAiClientService } from './openai-client.service';
 import { EmbeddingsService } from './embeddings.service';
 import { AnswerGenerationService } from './answer-generation.service';
-import { AiBudgetService } from "./ai-budget.service";
-import { PrismaModule } from "../prisma/prisma.module";
+import { AiBudgetService } from './ai-budget.service';
+import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
-    imports: [
-        PrismaModule,
-    ],
+    imports: [PrismaModule],
     providers: [
         OpenAiClientService,
         EmbeddingsService,
         AnswerGenerationService,
-        AiBudgetService
+        AiBudgetService,
     ],
     exports: [EmbeddingsService, AnswerGenerationService, AiBudgetService],
 })

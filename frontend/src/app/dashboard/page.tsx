@@ -25,7 +25,7 @@ import { DocumentUpload } from '@/features/documents/components/DocumentUpload';
 import { DocumentsList } from '@/features/documents/components/DocumentsList';
 import { ChatPanel } from '@/features/chat/components/ChatPanel';
 import { useAppOperationState } from '@/lib/app-operation';
-import { AboutAppDialog } from "@/components/AboutAppDialog";
+import { AboutAppDialog } from '@/components/AboutAppDialog';
 
 export default function DashboardPage() {
     const router = useRouter();
@@ -178,7 +178,7 @@ export default function DashboardPage() {
                                 sm: 1.5,
                             }}
                             sx={{
-                                alignItems: "center",
+                                alignItems: 'center',
                             }}
                         >
                             <Avatar

@@ -51,10 +51,7 @@ async function createResponseError(
         const data = JSON.parse(responseText) as ChatErrorResponse;
 
         return new ChatRequestError(
-            normalizeErrorMessage(
-                data.message,
-                fallbackMessage,
-            ),
+            normalizeErrorMessage(data.message, fallbackMessage),
             data.code,
             data.resetAt,
         );
@@ -169,13 +166,10 @@ export type ClearChatHistoryResponse = {
 };
 
 export async function clearChatHistory(): Promise<ClearChatHistoryResponse> {
-    const response = await fetch(
-        '/api/chat/messages',
-        {
-            method: 'DELETE',
-            credentials: 'include',
-        },
-    );
+    const response = await fetch('/api/chat/messages', {
+        method: 'DELETE',
+        credentials: 'include',
+    });
 
     if (!response.ok) {
         const error = await response.json().catch(() => null);

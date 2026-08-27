@@ -21,10 +21,7 @@ import {
 } from '@mui/material';
 import { useDocuments } from '@/features/documents/documents.queries';
 import { askQuestionStream, ChatRequestError } from '../chat.api';
-import {
-    DAILY_AI_BUDGET_EXCEEDED_CODE,
-    type ChatMessage,
-} from '../chat.types';
+import { DAILY_AI_BUDGET_EXCEEDED_CODE, type ChatMessage } from '../chat.types';
 import { useChatMessages } from '../chat.queries';
 import { ClearChatHistoryButton } from './ClearChatHistoryButton';
 import { appOperationKeys, useAppOperationState } from '@/lib/app-operation';
@@ -36,18 +33,11 @@ type ChatErrorState = {
     resetAt?: string;
 };
 
-function isDailyBudgetError(
-    error: ChatErrorState,
-): boolean {
-    return (
-        error.code ===
-        DAILY_AI_BUDGET_EXCEEDED_CODE
-    );
+function isDailyBudgetError(error: ChatErrorState): boolean {
+    return error.code === DAILY_AI_BUDGET_EXCEEDED_CODE;
 }
 
-function getChatErrorMessage(
-    error: ChatErrorState,
-): string {
+function getChatErrorMessage(error: ChatErrorState): string {
     if (!isDailyBudgetError(error)) {
         return error.message;
     }
@@ -62,11 +52,10 @@ function getChatErrorMessage(
         return "You've reached today's AI usage limit. Please try again after the daily limit resets.";
     }
 
-    const formattedResetDate =
-        new Intl.DateTimeFormat('en-US', {
-            dateStyle: 'medium',
-            timeStyle: 'short',
-        }).format(resetDate);
+    const formattedResetDate = new Intl.DateTimeFormat('en-US', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+    }).format(resetDate);
 
     return `You've reached today's AI usage limit. You can ask more questions after ${formattedResetDate}.`;
 }
@@ -82,8 +71,7 @@ export function ChatPanel() {
 
     const [hasReceivedDelta, setHasReceivedDelta] = useState(false);
 
-    const [chatError, setChatError] =
-        useState<ChatErrorState | null>(null);
+    const [chatError, setChatError] = useState<ChatErrorState | null>(null);
 
     const formRef = useRef<HTMLFormElement>(null);
 
@@ -632,9 +620,7 @@ export function ChatPanel() {
                 {chatError && (
                     <Alert
                         severity={
-                            isDailyBudgetError(chatError)
-                                ? 'warning'
-                                : 'error'
+                            isDailyBudgetError(chatError) ? 'warning' : 'error'
                         }
                     >
                         <AlertTitle>
