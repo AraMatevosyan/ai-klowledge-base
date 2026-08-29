@@ -264,7 +264,7 @@ describe('ChatService', () => {
                 role: 'ASSISTANT',
                 content: 'The resume mentions React and TypeScript [2].',
                 sources: result.sources,
-                createdAt: expect.any(Date),
+                createdAt: expect.any(Date) as unknown,
             },
         });
     });
@@ -287,6 +287,8 @@ describe('ChatService', () => {
 
         answerGenerationService.streamAnswer.mockImplementation(
             async function* () {
+                await Promise.resolve();
+
                 yield 'React ';
                 yield 'and TypeScript ';
                 yield 'are mentioned [1].';

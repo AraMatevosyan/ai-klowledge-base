@@ -153,6 +153,8 @@ describe('AnswerGenerationService', () => {
 
     it('settles actual token usage for a streaming answer', async () => {
         async function* createStream() {
+            await Promise.resolve();
+
             yield {
                 type: 'response.output_text.delta',
                 delta: 'Ara is ',

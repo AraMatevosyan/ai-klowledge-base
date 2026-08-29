@@ -24,8 +24,8 @@ const DEFAULT_CONFIG: Record<string, number> = {
 
 describe('AiBudgetService', () => {
     const prisma = {
-        $queryRaw: jest.fn(),
-        $executeRaw: jest.fn(),
+        $queryRaw: jest.fn<Promise<unknown>, unknown[]>(),
+        $executeRaw: jest.fn<Promise<number>, unknown[]>(),
     };
 
     function createService(

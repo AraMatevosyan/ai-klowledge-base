@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ChatAnswerResponse, ChatSource } from './chat.types';
 import { sanitizeSourceExcerpt } from './source-excerpt-sanitizer';
 import { filterCitedSources } from './citation.utils';
+import type { SearchResult } from '../search/search.service';
 
 type AnswerDeltaHandler = (delta: string) => void;
 
@@ -80,7 +81,7 @@ export class ChatService {
             });
         }
 
-        const relevantChunks = retrieval.results;
+        const relevantChunks: SearchResult[] = retrieval.results;
 
         const answerContext: AnswerContextChunk[] = relevantChunks.map(
             (chunk) => ({

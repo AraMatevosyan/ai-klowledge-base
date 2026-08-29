@@ -170,8 +170,8 @@ describe('EmbeddingsService', () => {
             .mockResolvedValueOnce(reservation)
             .mockResolvedValueOnce(secondReservation);
 
-        embeddingsCreate.mockImplementation(
-            async ({ input }: { input: string[] }) => ({
+        embeddingsCreate.mockImplementation(({ input }: { input: string[] }) =>
+            Promise.resolve({
                 data: input.map((_, index) => ({
                     index,
                     embedding: createEmbedding(index + 1),

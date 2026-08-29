@@ -249,15 +249,13 @@ describe('SearchService', () => {
 
             expect(result.status).toBe('FOUND');
 
-            expect(result.results.map((chunk) => chunk.documentId)).toEqual([
-                'resume',
-                'resume',
-            ]);
+            expect(
+                result.results.map((chunk: SearchResult) => chunk.documentId),
+            ).toEqual(['resume', 'resume']);
 
-            expect(result.results.map((chunk) => chunk.chunkId)).toEqual([
-                'resume-chunk-1',
-                'resume-chunk-2',
-            ]);
+            expect(
+                result.results.map((chunk: SearchResult) => chunk.chunkId),
+            ).toEqual(['resume-chunk-1', 'resume-chunk-2']);
         });
 
         it('returns NO_RELEVANT_CONTEXT when similarity is too low', async () => {

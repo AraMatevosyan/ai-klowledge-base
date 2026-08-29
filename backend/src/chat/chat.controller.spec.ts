@@ -17,7 +17,7 @@ function createResponseMock() {
     const status = jest.fn();
     const setHeader = jest.fn();
     const flushHeaders = jest.fn();
-    const write = jest.fn();
+    const write = jest.fn<boolean, [string]>();
     const end = jest.fn();
 
     const response = {
@@ -106,16 +106,18 @@ describe('ChatController daily AI budget', () => {
 
         expect(responseMock.write).toHaveBeenCalledTimes(1);
 
-        const writtenLine = responseMock.write.mock.calls[0][0] as string;
+        const writtenLine = responseMock.write.mock.calls[0][0];
 
         expect(writtenLine.endsWith('\n')).toBe(true);
 
-        expect(JSON.parse(writtenLine)).toEqual({
+        const parsedLine: unknown = JSON.parse(writtenLine);
+
+        expect(parsedLine).toEqual({
             type: 'error',
 
             code: 'DAILY_AI_BUDGET_EXCEEDED',
 
-            message: expect.any(String),
+            message: expect.any(String) as unknown,
 
             resetAt: '2026-08-28T00:00:00.000Z',
         });

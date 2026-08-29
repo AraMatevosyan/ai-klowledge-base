@@ -66,7 +66,7 @@ export class PdfProcessorService {
 
     private normalizeText(text: string) {
         return text
-            .replace(/\u0000/g, '')
+            .replaceAll(String.fromCharCode(0), '')
             .replace(/\r\n?/g, '\n')
             .replace(/[^\S\n]+/g, ' ')
             .replace(/\n{3,}/g, '\n\n')
