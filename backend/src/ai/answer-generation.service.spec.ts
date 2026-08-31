@@ -75,7 +75,7 @@ describe('AnswerGenerationService', () => {
             'user-1',
             expect.stringContaining('GROUNDING RULES'),
             expect.stringContaining('What does Ara do?'),
-            1_000,
+            2_000,
         );
 
         expect(responsesCreate).not.toHaveBeenCalled();
@@ -108,7 +108,7 @@ describe('AnswerGenerationService', () => {
             'user-1',
             expect.stringContaining('GROUNDING RULES'),
             expect.stringContaining('What does Ara do?'),
-            1_000,
+            2_000,
         );
 
         expect(responsesCreate).not.toHaveBeenCalled();

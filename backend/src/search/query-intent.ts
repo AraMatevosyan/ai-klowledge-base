@@ -10,19 +10,23 @@ const SUMMARY_PATTERNS = [
     /\bsummari[sz]e\b/i,
     /\bsummary\b/i,
     /\boverview\b/i,
-    /\bmain topic\b/i,
-    /\bmain idea\b/i,
-    /\bmain subject\b/i,
-    /\bwhat is (this|the) document about\b/i,
-    /\bdescribe (this|the) document\b/i,
+    /\bmain topics?\b/i,
+    /\bmain ideas?\b/i,
+    /\bmain subjects?\b/i,
+    /\bmain points?\b/i,
+    /\bkey points?\b/i,
+    /\bkey takeaways?\b/i,
+    /\bwhat (?:is|are) (?:this|the|these) documents? about\b/i,
+    /\bdescribe (?:this|the|these) documents?\b/i,
 ];
 
 const ALL_DOCUMENTS_PATTERNS = [
-    /\ball (uploaded )?(documents?|files?)\b/i,
-    /\bevery (document|file)\b/i,
-    /\beach (document|file)\b/i,
-    /\bacross all (documents?|files?)\b/i,
-    /\bfrom all (documents?|files?)\b/i,
+    /\ball (?:my )?(?:uploaded )?(?:documents?|files?)\b/i,
+    /\bevery (?:document|file)\b/i,
+    /\beach (?:document|file)\b/i,
+    /\bacross (?:all |my |the |these )?(?:uploaded )?(?:documents|files)\b/i,
+    /\bfrom (?:all |my |the |these )?(?:uploaded )?(?:documents|files)\b/i,
+    /\b(?:my|these) (?:uploaded )?(?:documents|files)\b/i,
     /\bentire knowledge base\b/i,
 ];
 

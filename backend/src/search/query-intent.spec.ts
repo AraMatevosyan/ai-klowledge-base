@@ -45,4 +45,20 @@ describe('detectQueryIntent', () => {
     ])('returns $expected for "$query"', ({ query, expected }) => {
         expect(detectQueryIntent(query)).toBe(expected);
     });
+    it.each([
+        'What are the main topics across my documents?',
+        'Summarize all uploaded documents.',
+        'Give me an overview across these documents.',
+        'What are the key takeaways from my uploaded files?',
+    ])('detects an all-documents summary: %s', (query) => {
+        expect(detectQueryIntent(query)).toBe(QueryIntent.SUMMARY_ALL);
+    });
+
+    it.each([
+        'What are the main topics in this document?',
+        'Summarize this document.',
+        'Give me an overview of the document.',
+    ])('detects a single-document summary: %s', (query) => {
+        expect(detectQueryIntent(query)).toBe(QueryIntent.SUMMARY_SINGLE);
+    });
 });

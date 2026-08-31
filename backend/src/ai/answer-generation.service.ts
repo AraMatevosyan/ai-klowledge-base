@@ -3,7 +3,7 @@ import { OpenAiClientService } from './openai-client.service';
 import { AiBudgetService } from './ai-budget.service';
 import type { AiBudgetReservation, AiTokenUsage } from './ai-budget.types';
 
-const MAX_CHAT_OUTPUT_TOKENS = 1_000;
+const MAX_CHAT_OUTPUT_TOKENS = 2_000;
 
 type OpenAiResponseUsage = {
     input_tokens: number;
