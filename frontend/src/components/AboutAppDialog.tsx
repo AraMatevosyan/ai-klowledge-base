@@ -36,7 +36,7 @@ const usageSteps = [
     {
         title: 'Ask a question',
         description:
-            'The AI searches across all your ready documents and selects relevant sections.',
+            'Ask in English or another language. The AI searches across all your ready documents and selects relevant sections.',
     },
     {
         title: 'Review the sources',
@@ -52,6 +52,9 @@ const exampleQuestions = [
     'Which technologies are mentioned in the resume?',
     'What is the total amount shown in the invoice?',
     'Does any document mention a termination policy?',
+    'Кратко опиши все загруженные документы.',
+    'Ամփոփիր բոլոր վերբեռնված փաստաթղթերը։',
+    'Resume todos los documentos cargados.',
 ];
 
 export function AboutAppDialog() {
@@ -176,6 +179,23 @@ export function AboutAppDialog() {
                                 creates embeddings and uses semantic search to
                                 find relevant information before generating an
                                 answer.
+                            </Typography>
+                        </Box>
+
+                        <Divider />
+
+                        <Box>
+                            <Typography variant="h6" gutterBottom>
+                                Multilingual questions
+                            </Typography>
+
+                            <Typography variant="body2" color="text.secondary">
+                                You can ask questions in different languages.
+                                The application detects the meaning of your
+                                request and creates a normalized search query to
+                                find relevant information across your documents.
+                                The original question is preserved when the AI
+                                generates the answer.
                             </Typography>
                         </Box>
 
