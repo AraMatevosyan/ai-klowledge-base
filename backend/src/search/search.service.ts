@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmbeddingsService } from '../ai/embeddings.service';
 import { QueryIntent } from './query-intent';
@@ -64,6 +64,8 @@ export type ChatRetrievalResult =
 
 @Injectable()
 export class SearchService {
+    private readonly logger = new Logger(SearchService.name);
+
     constructor(
         private readonly prisma: PrismaService,
 
@@ -78,22 +80,27 @@ export class SearchService {
     ): Promise<ChatRetrievalResult> {
         const normalizedQuery = query.trim();
 
-        const intent = await this.queryIntentClassifierService.detect(
-            userId,
-            normalizedQuery,
-        );
+        const { intent, retrievalQuery } =
+            await this.queryIntentClassifierService.detect(
+                userId,
+                normalizedQuery,
+            );
 
         if (intent === QueryIntent.SUMMARY_SINGLE) {
-            return this.retrieveSingleDocumentSummary(userId, normalizedQuery);
+            return this.retrieveSingleDocumentSummary(
+                userId,
+                normalizedQuery,
+                retrievalQuery,
+            );
         }
 
         if (intent === QueryIntent.SUMMARY_ALL) {
-            return this.retrieveAllDocumentsSummary(userId, normalizedQuery);
+            return this.retrieveAllDocumentsSummary(userId, retrievalQuery);
         }
 
         const vectorValue = await this.createVectorValue(
             userId,
-            normalizedQuery,
+            retrievalQuery,
         );
 
         const candidates = await this.findSemanticCandidates(
@@ -103,6 +110,16 @@ export class SearchService {
 
         const relevantCandidates = candidates.filter(
             (candidate) => candidate.similarity >= MIN_SIMILARITY,
+        );
+
+        this.logger.debug(
+            JSON.stringify({
+                event: 'semantic_retrieval',
+                intent,
+                threshold: MIN_SIMILARITY,
+                candidateCount: candidates.length,
+                relevantCandidateCount: relevantCandidates.length,
+            }),
         );
 
         if (relevantCandidates.length === 0) {
@@ -171,15 +188,15 @@ export class SearchService {
         const [availability] = await this.prisma.$queryRaw<
             SearchAvailability[]
         >`
-                SELECT
-                    COUNT(
+            SELECT
+                COUNT(
                         DISTINCT document.id
-                    )::int
+                )::int
                         AS "documentCount",
 
-                    COUNT(
+                COUNT(
                         DISTINCT document.id
-                    )
+                )
                     FILTER (
                         WHERE
                             document.status =
@@ -187,7 +204,7 @@ export class SearchService {
                     )::int
                         AS "readyDocumentCount",
 
-                    COUNT(chunk.id)
+                COUNT(chunk.id)
                     FILTER (
                         WHERE
                             document.status =
@@ -197,17 +214,17 @@ export class SearchService {
                     )::int
                         AS "searchableChunkCount"
 
-                FROM documents AS document
+            FROM documents AS document
 
-                LEFT JOIN
-                    document_chunks AS chunk
-                    ON chunk.document_id =
-                       document.id
+                     LEFT JOIN
+                 document_chunks AS chunk
+                 ON chunk.document_id =
+                    document.id
 
-                WHERE
-                    document.user_id =
-                    ${userId}
-            `;
+            WHERE
+                document.user_id =
+                ${userId}
+        `;
 
         return (
             availability ?? {
@@ -223,52 +240,52 @@ export class SearchService {
         vectorValue: string,
     ): Promise<SearchResult[]> {
         const results = await this.prisma.$queryRaw<SearchRow[]>`
-                SELECT
-                    chunk.id
-                        AS "chunkId",
+            SELECT
+                chunk.id
+                      AS "chunkId",
 
-                    document.id
-                        AS "documentId",
+                document.id
+                      AS "documentId",
 
-                    document.name
-                        AS "documentName",
+                document.name
+                      AS "documentName",
 
-                    chunk.page_number
-                        AS "pageNumber",
+                chunk.page_number
+                      AS "pageNumber",
 
-                    chunk.chunk_index
-                        AS "chunkIndex",
+                chunk.chunk_index
+                      AS "chunkIndex",
 
-                    chunk.content
-                        AS "content",
+                chunk.content
+                      AS "content",
 
-                    1 - (
-                        chunk.embedding <=>
+                1 - (
+                    chunk.embedding <=>
                         ${vectorValue}::vector
                     ) AS "similarity"
 
-                FROM document_chunks AS chunk
+            FROM document_chunks AS chunk
 
-                INNER JOIN documents AS document
-                    ON document.id =
-                       chunk.document_id
+                     INNER JOIN documents AS document
+                                ON document.id =
+                                   chunk.document_id
 
-                WHERE
-                    document.user_id =
-                        ${userId}
+            WHERE
+                document.user_id =
+                ${userId}
 
-                    AND document.status =
-                        'READY'
+              AND document.status =
+                  'READY'
 
-                    AND chunk.embedding
-                        IS NOT NULL
+              AND chunk.embedding
+                IS NOT NULL
 
-                ORDER BY
-                    chunk.embedding <=>
-                    ${vectorValue}::vector
+            ORDER BY
+                chunk.embedding <=>
+                ${vectorValue}::vector
 
                 LIMIT ${CANDIDATE_LIMIT}
-            `;
+        `;
 
         return this.normalizeResults(results);
     }
@@ -377,6 +394,7 @@ export class SearchService {
     private async retrieveSingleDocumentSummary(
         userId: string,
         query: string,
+        retrievalQuery: string,
     ): Promise<ChatRetrievalResult> {
         const documents = await this.getReadyDocuments(userId);
 
@@ -396,7 +414,10 @@ export class SearchService {
             };
         }
 
-        const vectorValue = await this.createVectorValue(userId, query);
+        const vectorValue = await this.createVectorValue(
+            userId,
+            retrievalQuery,
+        );
 
         const results = await this.findOrderedChunks(
             userId,
@@ -420,7 +441,7 @@ export class SearchService {
 
     private async retrieveAllDocumentsSummary(
         userId: string,
-        query: string,
+        retrievalQuery: string,
     ): Promise<ChatRetrievalResult> {
         const documents = await this.getReadyDocuments(userId);
 
@@ -438,7 +459,10 @@ export class SearchService {
             };
         }
 
-        const vectorValue = await this.createVectorValue(userId, query);
+        const vectorValue = await this.createVectorValue(
+            userId,
+            retrievalQuery,
+        );
 
         const chunksByDocument = await Promise.all(
             documents.map((document) =>
@@ -473,54 +497,54 @@ export class SearchService {
         limit: number,
     ): Promise<SearchResult[]> {
         const results = await this.prisma.$queryRaw<SearchRow[]>`
-                SELECT
-                    chunk.id
-                        AS "chunkId",
+            SELECT
+                chunk.id
+                      AS "chunkId",
 
-                    document.id
-                        AS "documentId",
+                document.id
+                      AS "documentId",
 
-                    document.name
-                        AS "documentName",
+                document.name
+                      AS "documentName",
 
-                    chunk.page_number
-                        AS "pageNumber",
+                chunk.page_number
+                      AS "pageNumber",
 
-                    chunk.chunk_index
-                        AS "chunkIndex",
+                chunk.chunk_index
+                      AS "chunkIndex",
 
-                    chunk.content
-                        AS "content",
+                chunk.content
+                      AS "content",
 
-                    1 - (
-                        chunk.embedding <=>
+                1 - (
+                    chunk.embedding <=>
                         ${vectorValue}::vector
                     ) AS "similarity"
 
-                FROM document_chunks AS chunk
+            FROM document_chunks AS chunk
 
-                INNER JOIN documents AS document
-                    ON document.id =
-                       chunk.document_id
+                     INNER JOIN documents AS document
+                                ON document.id =
+                                   chunk.document_id
 
-                WHERE
-                    document.id =
-                        ${documentId}
+            WHERE
+                document.id =
+                ${documentId}
 
-                    AND document.user_id =
-                        ${userId}
+              AND document.user_id =
+                  ${userId}
 
-                    AND document.status =
-                        'READY'
+              AND document.status =
+                  'READY'
 
-                    AND chunk.embedding
-                        IS NOT NULL
+              AND chunk.embedding
+                IS NOT NULL
 
-                ORDER BY
-                    chunk.chunk_index ASC
+            ORDER BY
+                chunk.chunk_index ASC
 
                 LIMIT ${limit}
-            `;
+        `;
 
         return this.normalizeResults(results);
     }

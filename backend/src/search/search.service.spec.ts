@@ -69,8 +69,12 @@ describe('SearchService', () => {
 
         service = module.get(SearchService);
 
-        queryIntentClassifierService.detect.mockResolvedValue(
-            QueryIntent.FACTUAL,
+        queryIntentClassifierService.detect.mockImplementation(
+            (_userId: string, query: string) =>
+                Promise.resolve({
+                    intent: QueryIntent.FACTUAL,
+                    retrievalQuery: query,
+                }),
         );
 
         embeddingsService.createOne.mockResolvedValue(QUERY_EMBEDDING);
@@ -280,6 +284,38 @@ describe('SearchService', () => {
             });
         });
 
+        it('uses the English retrieval query for a multilingual question', async () => {
+            queryIntentClassifierService.detect.mockResolvedValueOnce({
+                intent: QueryIntent.FACTUAL,
+                retrievalQuery:
+                    'How many years of experience are mentioned in the resume?',
+            });
+
+            prisma.$queryRaw.mockResolvedValue([
+                createSearchResult({
+                    content: 'Frontend Engineer with 6+ years of experience.',
+                    similarity: 0.8,
+                }),
+            ]);
+
+            const result = await service.retrieveForChat(
+                USER_ID,
+                'كم عدد سنوات الخبرة المذكورة في السيرة الذاتية؟',
+            );
+
+            expect(queryIntentClassifierService.detect).toHaveBeenCalledWith(
+                USER_ID,
+                'كم عدد سنوات الخبرة المذكورة في السيرة الذاتية؟',
+            );
+
+            expect(embeddingsService.createOne).toHaveBeenCalledWith(
+                USER_ID,
+                'How many years of experience are mentioned in the resume?',
+            );
+
+            expect(result.status).toBe('FOUND');
+        });
+
         it('propagates embedding errors', async () => {
             const embeddingError = new Error('Daily budget exceeded');
 
@@ -295,9 +331,10 @@ describe('SearchService', () => {
 
     describe('retrieveForChat: comparison', () => {
         it('selects up to three chunks from each of the two best documents', async () => {
-            queryIntentClassifierService.detect.mockResolvedValue(
-                QueryIntent.COMPARISON,
-            );
+            queryIntentClassifierService.detect.mockResolvedValue({
+                intent: QueryIntent.COMPARISON,
+                retrievalQuery: 'Compare the resume and invoice',
+            });
 
             const candidates = [
                 ...Array.from(
@@ -354,9 +391,10 @@ describe('SearchService', () => {
 
     describe('retrieveForChat: exhaustive', () => {
         it('excludes documents whose score is too far from the best document', async () => {
-            queryIntentClassifierService.detect.mockResolvedValue(
-                QueryIntent.EXHAUSTIVE,
-            );
+            queryIntentClassifierService.detect.mockResolvedValue({
+                intent: QueryIntent.EXHAUSTIVE,
+                retrievalQuery: 'Everything about the documents',
+            });
 
             prisma.$queryRaw.mockResolvedValue([
                 createSearchResult({
@@ -415,8 +453,12 @@ describe('SearchService', () => {
 
     describe('retrieveForChat: single document summary', () => {
         beforeEach(() => {
-            queryIntentClassifierService.detect.mockResolvedValue(
-                QueryIntent.SUMMARY_SINGLE,
+            queryIntentClassifierService.detect.mockImplementation(
+                (_userId: string, query: string) =>
+                    Promise.resolve({
+                        intent: QueryIntent.SUMMARY_SINGLE,
+                        retrievalQuery: query,
+                    }),
             );
         });
 
@@ -508,6 +550,11 @@ describe('SearchService', () => {
         });
 
         it('selects a named document from multiple documents', async () => {
+            queryIntentClassifierService.detect.mockResolvedValueOnce({
+                intent: QueryIntent.SUMMARY_SINGLE,
+                retrievalQuery: 'Summarize Resume.pdf',
+            });
+
             prisma.document.findMany.mockResolvedValue([
                 {
                     id: 'resume',
@@ -531,20 +578,29 @@ describe('SearchService', () => {
 
             const result = await service.retrieveForChat(
                 USER_ID,
-                'Summarize Resume.pdf',
+                'Кратко опиши Resume.pdf',
             );
 
             expect(result).toEqual({
                 status: 'FOUND',
                 results: [resumeChunk],
             });
+
+            expect(embeddingsService.createOne).toHaveBeenCalledWith(
+                USER_ID,
+                'Summarize Resume.pdf',
+            );
         });
     });
 
     describe('retrieveForChat: all documents summary', () => {
         beforeEach(() => {
-            queryIntentClassifierService.detect.mockResolvedValue(
-                QueryIntent.SUMMARY_ALL,
+            queryIntentClassifierService.detect.mockImplementation(
+                (_userId: string, query: string) =>
+                    Promise.resolve({
+                        intent: QueryIntent.SUMMARY_ALL,
+                        retrievalQuery: query,
+                    }),
             );
         });
 
@@ -576,6 +632,11 @@ describe('SearchService', () => {
         });
 
         it('returns chunks from every ready document', async () => {
+            queryIntentClassifierService.detect.mockResolvedValueOnce({
+                intent: QueryIntent.SUMMARY_ALL,
+                retrievalQuery: 'Summarize all uploaded documents',
+            });
+
             prisma.document.findMany.mockResolvedValue([
                 {
                     id: 'resume',
@@ -608,7 +669,7 @@ describe('SearchService', () => {
 
             const result = await service.retrieveForChat(
                 USER_ID,
-                'Summarize all uploaded documents',
+                'すべてのアップロード済み文書を要約してください。',
             );
 
             expect(result).toEqual({
