@@ -86,6 +86,9 @@ Path=/
 - Source page numbers
 - Sanitized source excerpts
 - Explicit no-context responses
+- Multilingual question understanding
+- Hybrid query-intent classification using deterministic patterns and AI fallback
+- English retrieval-query generation for cross-language semantic search
 
 ### User experience
 
@@ -112,6 +115,7 @@ The budget applies to:
 - semantic-search query embeddings;
 - regular AI answers;
 - streaming AI answers.
+- AI-based query-intent classification;
 
 Before an OpenAI request is made, the maximum estimated request cost is reserved.
 
@@ -295,15 +299,14 @@ If processing fails, the document status changes to `FAILED` and the user can re
 
 ```mermaid
 flowchart TD
-    Question["User question"] --> Intent["Detect query intent"]
-    Intent --> Retrieval["Select retrieval strategy"]
-    Retrieval --> Search["Retrieve document chunks"]
-    Search --> Context["Build grounded context"]
-    Context --> Reserve["Reserve chat budget"]
-    Reserve --> LLM["Generate answer"]
-    LLM --> Stream["Stream response"]
-    Stream --> Settle["Settle actual token cost"]
-    Settle --> Sources["Return cited sources"]
+    Question["User question"] --> Pattern["Pattern intent detection"]
+    Pattern --> Classifier["AI classifier fallback"]
+    Classifier --> Rewrite["Create English retrieval query"]
+    Rewrite --> Embed["Generate query embedding"]
+    Embed --> Retrieval["Retrieve document chunks"]
+    Retrieval --> Context["Build grounded context"]
+    Context --> LLM["Generate grounded answer"]
+    LLM --> Stream["Stream answer and citations"]
 ```
 
 ## Multi-document retrieval
@@ -322,6 +325,14 @@ Compare the information in the uploaded documents.
 Which technologies are mentioned in the resume?
 
 What is the total amount shown in the invoice?
+
+Query intent detection uses deterministic patterns for common requests and
+an AI classifier as a fallback for questions in other languages.
+
+The classifier returns both the detected intent and a concise English
+retrieval query. The English query is used only for vector search, while
+the original user question is preserved for document selection and answer
+generation.
 ```
 
 Supported query intents include:
@@ -685,6 +696,11 @@ All backend endpoints use the `/api` prefix.
 | `DELETE` | `/api/chat/messages` | Clear chat history |
 
 ## Environment variables
+# Optional. Defaults to OPENAI_CHAT_MODEL.
+OPENAI_INTENT_MODEL=gpt-4.1-mini
+
+For accurate daily cost accounting, OPENAI_INTENT_MODEL should use pricing
+compatible with the configured chat pricing variables.
 
 ### Backend
 
@@ -960,6 +976,7 @@ npm test -- answer-generation.service --runInBand
 npm test -- ai-budget.service --runInBand
 npm test -- citation.utils --runInBand
 npm test -- source-excerpt-sanitizer --runInBand
+npm test -- query-intent-classifier.service --runInBand
 ```
 
 ### Covered behavior
@@ -994,6 +1011,10 @@ The tests cover:
 - regular chat budget errors;
 - streaming chat budget errors;
 - embedding budget accounting.
+- multilingual intent classification;
+- English retrieval-query generation;
+- pattern-based classifier fast path;
+- classifier fallback and budget accounting;
 
 ## Continuous integration
 
@@ -1192,7 +1213,7 @@ Possible production improvements:
 - Redis-backed job queues;
 - hybrid keyword and vector search;
 - cross-encoder reranking;
-- query rewriting;
+- advanced query expansion and retrieval reranking;
 - document filters inside the global knowledge base;
 - multiple conversations;
 - evaluation datasets;
