@@ -2,19 +2,8 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { EmbeddingsService } from '../ai/embeddings.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SearchService, type SearchResult } from './search.service';
-import { detectQueryIntent, QueryIntent } from './query-intent';
-
-jest.mock('./query-intent', () => ({
-    QueryIntent: {
-        FACTUAL: 'FACTUAL',
-        COMPARISON: 'COMPARISON',
-        EXHAUSTIVE: 'EXHAUSTIVE',
-        SUMMARY_SINGLE: 'SUMMARY_SINGLE',
-        SUMMARY_ALL: 'SUMMARY_ALL',
-    },
-
-    detectQueryIntent: jest.fn(),
-}));
+import { QueryIntent } from './query-intent';
+import { QueryIntentClassifierService } from './query-intent-classifier.service';
 
 const USER_ID = 'user-1';
 
@@ -50,7 +39,9 @@ describe('SearchService', () => {
         createOne: jest.fn(),
     };
 
-    const detectQueryIntentMock = jest.mocked(detectQueryIntent);
+    const queryIntentClassifierService = {
+        detect: jest.fn(),
+    };
 
     beforeEach(async () => {
         jest.resetAllMocks();
@@ -68,12 +59,19 @@ describe('SearchService', () => {
                     provide: EmbeddingsService,
                     useValue: embeddingsService,
                 },
+
+                {
+                    provide: QueryIntentClassifierService,
+                    useValue: queryIntentClassifierService,
+                },
             ],
         }).compile();
 
         service = module.get(SearchService);
 
-        detectQueryIntentMock.mockReturnValue('FACTUAL' as QueryIntent);
+        queryIntentClassifierService.detect.mockResolvedValue(
+            QueryIntent.FACTUAL,
+        );
 
         embeddingsService.createOne.mockResolvedValue(QUERY_EMBEDDING);
     });
@@ -199,7 +197,7 @@ describe('SearchService', () => {
 
             expect(embeddingsService.createOne).not.toHaveBeenCalled();
 
-            expect(detectQueryIntentMock).not.toHaveBeenCalled();
+            expect(queryIntentClassifierService.detect).not.toHaveBeenCalled();
         });
     });
 
@@ -238,7 +236,8 @@ describe('SearchService', () => {
                 '  Which skills are mentioned?  ',
             );
 
-            expect(detectQueryIntentMock).toHaveBeenCalledWith(
+            expect(queryIntentClassifierService.detect).toHaveBeenCalledWith(
+                USER_ID,
                 'Which skills are mentioned?',
             );
 
@@ -296,7 +295,9 @@ describe('SearchService', () => {
 
     describe('retrieveForChat: comparison', () => {
         it('selects up to three chunks from each of the two best documents', async () => {
-            detectQueryIntentMock.mockReturnValue(QueryIntent.COMPARISON);
+            queryIntentClassifierService.detect.mockResolvedValue(
+                QueryIntent.COMPARISON,
+            );
 
             const candidates = [
                 ...Array.from(
@@ -353,7 +354,9 @@ describe('SearchService', () => {
 
     describe('retrieveForChat: exhaustive', () => {
         it('excludes documents whose score is too far from the best document', async () => {
-            detectQueryIntentMock.mockReturnValue(QueryIntent.EXHAUSTIVE);
+            queryIntentClassifierService.detect.mockResolvedValue(
+                QueryIntent.EXHAUSTIVE,
+            );
 
             prisma.$queryRaw.mockResolvedValue([
                 createSearchResult({
@@ -412,7 +415,9 @@ describe('SearchService', () => {
 
     describe('retrieveForChat: single document summary', () => {
         beforeEach(() => {
-            detectQueryIntentMock.mockReturnValue(QueryIntent.SUMMARY_SINGLE);
+            queryIntentClassifierService.detect.mockResolvedValue(
+                QueryIntent.SUMMARY_SINGLE,
+            );
         });
 
         it('returns NO_RELEVANT_CONTEXT when there are no ready documents', async () => {
@@ -538,7 +543,9 @@ describe('SearchService', () => {
 
     describe('retrieveForChat: all documents summary', () => {
         beforeEach(() => {
-            detectQueryIntentMock.mockReturnValue(QueryIntent.SUMMARY_ALL);
+            queryIntentClassifierService.detect.mockResolvedValue(
+                QueryIntent.SUMMARY_ALL,
+            );
         });
 
         it('requires document selection when more than five documents exist', async () => {

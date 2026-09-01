@@ -13,6 +13,11 @@ import { PrismaModule } from '../prisma/prisma.module';
         AnswerGenerationService,
         AiBudgetService,
     ],
-    exports: [EmbeddingsService, AnswerGenerationService, AiBudgetService],
+    exports: [
+        OpenAiClientService,
+        EmbeddingsService,
+        AnswerGenerationService,
+        AiBudgetService,
+    ],
 })
 export class AiModule {}

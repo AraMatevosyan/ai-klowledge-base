@@ -1,4 +1,8 @@
-import { detectQueryIntent, QueryIntent } from './query-intent';
+import {
+    detectQueryIntent,
+    detectQueryIntentByPatterns,
+    QueryIntent,
+} from './query-intent';
 
 describe('detectQueryIntent', () => {
     it.each([
@@ -61,4 +65,15 @@ describe('detectQueryIntent', () => {
     ])('detects a single-document summary: %s', (query) => {
         expect(detectQueryIntent(query)).toBe(QueryIntent.SUMMARY_SINGLE);
     });
+    expect(detectQueryIntent('Что за документы?')).toBe(
+        QueryIntent.SUMMARY_ALL,
+    );
+
+    expect(detectQueryIntent('Что за документ?')).toBe(
+        QueryIntent.SUMMARY_SINGLE,
+    );
+
+    expect(
+        detectQueryIntentByPatterns('¿De qué tratan estos documentos?'),
+    ).toBeNull();
 });

@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmbeddingsService } from '../ai/embeddings.service';
-import { detectQueryIntent, QueryIntent } from './query-intent';
+import { QueryIntent } from './query-intent';
+import { QueryIntentClassifierService } from './query-intent-classifier.service';
 
 const MIN_SIMILARITY = 0.2;
 
@@ -67,6 +68,8 @@ export class SearchService {
         private readonly prisma: PrismaService,
 
         private readonly embeddingsService: EmbeddingsService,
+
+        private readonly queryIntentClassifierService: QueryIntentClassifierService,
     ) {}
 
     async retrieveForChat(
@@ -75,7 +78,10 @@ export class SearchService {
     ): Promise<ChatRetrievalResult> {
         const normalizedQuery = query.trim();
 
-        const intent = detectQueryIntent(normalizedQuery);
+        const intent = await this.queryIntentClassifierService.detect(
+            userId,
+            normalizedQuery,
+        );
 
         if (intent === QueryIntent.SUMMARY_SINGLE) {
             return this.retrieveSingleDocumentSummary(userId, normalizedQuery);
