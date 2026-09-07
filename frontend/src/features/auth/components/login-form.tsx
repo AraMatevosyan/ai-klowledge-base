@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent, SyntheticEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -109,7 +109,9 @@ export function LoginForm() {
                     }}
                     slotProps={{
                         htmlInput: {
-                            onSelect: (event: any) => {
+                            onSelect: (
+                                event: SyntheticEvent<HTMLInputElement>,
+                            ) => {
                                 setEmailCursorPosition(
                                     event.currentTarget.selectionStart ??
                                         event.currentTarget.value.length,
