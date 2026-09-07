@@ -1,4 +1,4 @@
-import { Box, Container, Paper, Stack, Typography } from '@mui/material';
+import { Box, Container, Paper } from '@mui/material';
 import { LoginForm } from '@/features/auth/components/login-form';
 
 export default function LoginPage() {
@@ -28,20 +28,6 @@ export default function LoginPage() {
                         boxShadow: '0 20px 60px rgba(31, 31, 64, 0.08)',
                     }}
                 >
-                    <Stack spacing={1} sx={{ mb: 4 }}>
-                        <Typography
-                            variant="h4"
-                            component="h1"
-                            sx={{ fontWeight: 700 }}
-                        >
-                            Welcome back
-                        </Typography>
-
-                        <Typography color="text.secondary">
-                            Sign in to continue to your knowledge base.
-                        </Typography>
-                    </Stack>
-
                     <LoginForm />
                 </Paper>
             </Container>

@@ -33,6 +33,11 @@ export function DocumentUpload() {
 
     const { isBusy, isRetrying, isStreaming } = useAppOperationState();
 
+    const requestError =
+        uploadMutation.error instanceof Error
+            ? uploadMutation.error.message
+            : null;
+
     useEffect(() => {
         if (!validationError && !requestError && !successMessage) return;
 
@@ -42,7 +47,7 @@ export function DocumentUpload() {
         }, 3000);
 
         return () => clearTimeout(timer);
-    }, [validationError, successMessage]);
+    }, [validationError, successMessage, requestError]);
 
     const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0] ?? null;
@@ -106,11 +111,6 @@ export function DocumentUpload() {
             // The request error is displayed below.
         }
     };
-
-    const requestError =
-        uploadMutation.error instanceof Error
-            ? uploadMutation.error.message
-            : null;
 
     return (
         <Paper variant="outlined" sx={{ p: 3 }}>
